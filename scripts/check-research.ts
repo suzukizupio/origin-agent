@@ -22,7 +22,7 @@ const option = (name: string, fallback: string) => {
 };
 const repeat = Number(option("--repeat", "1"));
 if (!Number.isInteger(repeat) || repeat < 1 || repeat > 10) throw new Error("--repeat は1〜10です。");
-const destination = resolve(option("--out", live ? "research-live-3b.json" : "research-fixture-3b.json"));
+const destination = resolve(option("--out", live ? "results/research-live-3b.json" : "results/research-fixture-3b.json"));
 const provider = await resolveProvider("ollama", option("--model", "qwen2.5-coder:3b"));
 const pages = [
   // 2026-09-17に公式ページで確認した事実を短い検査用資料へ整形。最新統計を保証するデータセットではない。
