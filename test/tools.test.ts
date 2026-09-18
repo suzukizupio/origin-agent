@@ -174,6 +174,38 @@ test("edit_file: 見つからない old_string は失敗する", async () => {
   }
 });
 
+test("edit_file: 見つからないときは、実物の近い行をそのまま引用できる形で示す", async () => {
+  const fx = await fixture();
+  try {
+    const source = [
+      "// 各種の上限値。",
+      "export const MAX_RETRY = 3;",
+      "export const TIMEOUT_MS = 20_000;",
+      "export function describe() {",
+      "  return `timeout=${TIMEOUT_MS}`;",
+      "}",
+      "",
+    ].join("\n");
+    await writeFile(join(fx.root, "limits.ts"), source, "utf8");
+    // 3B が read_file の後でも繰り返した、JSON 風の思い込み
+    const error = await editFileTool.run({ path: "limits.ts", old_string: "TIMEOUT_MS: 20_000", new_string: "TIMEOUT_MS: 30_000" }, fx.ctx)
+      .then(() => assert.fail("置換してはいけない"), (e: Error) => e.message);
+    const lines = error.split("\n");
+    const first = lines.findIndex((line) => line.includes("3 行目"));
+    assert.ok(first > 0, error);
+    assert.equal(lines[first], '  3 行目: "export const TIMEOUT_MS = 20_000;"');
+    assert.ok(lines.some((line) => line.includes("5 行目")), "名前だけ一致する行も候補に入る");
+    assert.equal(await readFile(join(fx.root, "limits.ts"), "utf8"), source);
+
+    // 手がかりになる名前が1つもなければ、候補は出さない
+    const unrelated = await editFileTool.run({ path: "limits.ts", old_string: "存在しない", new_string: "z" }, fx.ctx)
+      .then(() => "", (e: Error) => e.message);
+    assert.doesNotMatch(unrelated, /近い行/);
+  } finally {
+    await fx.dispose();
+  }
+});
+
 test("edit_file: 複数行を1行に詰めた old_string でも、空白を無視して1箇所なら置換する", async () => {
   const fx = await fixture();
   try {

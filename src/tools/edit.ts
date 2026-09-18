@@ -128,6 +128,29 @@ function findIgnoringWhitespace(text: string, needle: string): Span[] {
   return spans;
 }
 
+/**
+ * old_string に出てくる名前や数値を多く含む行を、近い順に返す。
+ *
+ * 実測: 3B は read_file で実物を読んだ直後でも、最初に思い込んだ文字列
+ * （"TIMEOUT_MS: 20_000"。実物は "export const TIMEOUT_MS = 20_000;"）で置換を繰り返し、
+ * 同じ呼び出しの3回目で打ち切られた（5回中3回）。
+ * 「正確に引用して」と言うだけでなく、引用すべき実物を JSON 文字列の形で見せる。
+ */
+function nearestLines(text: string, needle: string, limit = 3): string[] {
+  const tokens = [...new Set(needle.match(/[A-Za-z_$][\w$]*|\d[\d_.]*/g) ?? [])];
+  if (tokens.length === 0) return [];
+  const needed = Math.max(1, Math.ceil(tokens.length / 2));
+  return text.split("\n")
+    .map((line, index) => {
+      const words = new Set(line.match(/[A-Za-z_$][\w$]*|\d[\d_.]*/g) ?? []);
+      return { line: line.trim(), number: index + 1, score: tokens.filter((token) => words.has(token)).length };
+    })
+    .filter((candidate) => candidate.line !== "" && candidate.score >= needed)
+    .sort((a, b) => b.score - a.score || a.number - b.number)
+    .slice(0, limit)
+    .map((candidate) => `  ${candidate.number} 行目: ${JSON.stringify(candidate.line)}`);
+}
+
 function lineOf(text: string, index: number): number {
   return text.slice(0, index).split("\n").length;
 }
@@ -271,9 +294,13 @@ export const editFileTool: Tool = {
       // 小さいモデルの典型的な外し方を先回りして名指しする。
       // 「見つかりません」だけだと、同じ old_string で延々と再試行してくる。
       const looksLikeRegex = /\\[dws.+*?]|\[\^?.+\]|\.\*|\\\./.test(oldString);
+      const near = nearestLines(before, oldString);
       throw new Error(
         [
           `old_string がファイル内に見つかりません。`,
+          ...(near.length > 0
+            ? ["ファイル内の近い行（実物はこう書かれています。old_string には \"\" の中身をそのまま使えます）:", ...near]
+            : []),
           looksLikeRegex
             ? `old_string が正規表現に見えます。このツールは正規表現を解釈しません。ファイル内の文字列をそのまま引用してください。`
             : `read_file で現在の内容を確認し、空白や改行まで正確に引用してください。`,
