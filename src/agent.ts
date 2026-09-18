@@ -18,6 +18,14 @@ import type { AgentEnv, AgentEvent, AgentMode, Message, Provider, Tool, ToolCall
 /** 同一のツール呼び出しがこの回数に達したら、行き詰まりとみなして打ち切る */
 const REPEAT_LIMIT = 3;
 
+/**
+ * 作業ルートの中身を変えうるツール。これが成功した後は、同じ read_file や npm test を
+ * もう一度呼んでも結果が違いうるので、繰り返しの数え直しをする。
+ * 実測: 「読む → 直す → 読み直す」の3回目の read_file を行き詰まりと誤判定し、
+ * 編集後の確認に入ったところで打ち切っていた。
+ */
+const MUTATING_TOOLS = new Set(["edit_file", "replace_lines", "write_file", "edit_json", "run_shell"]);
+
 function normalizeUrl(raw: string): string {
   try {
     const url = new URL(raw.trim());
@@ -270,11 +278,14 @@ export class Agent {
         }
 
         emit({ type: "tool_start", name: call.name, args: call.args });
-        if (call.name.startsWith("web_")) { research = true; env.research = true; }
+        // 使えない web_ ツールを呼んだだけで調べものに切り替えない。切り替えると、
+        // 「使えません」のエラーを調べものの失敗として扱い、作業ごと打ち切ってしまう。
+        if (call.name.startsWith("web_") && tools.some((tool) => tool.name === call.name)) { research = true; env.research = true; }
         const refusal = research ? checkResearchFetch(call, [...sources, ...inputUrls], fetched) : undefined;
         const { text, ok } = refusal !== undefined ? { text: refusal, ok: false } : await this.invoke(call, tools);
         emit({ type: "tool_end", name: call.name, result: text, ok });
         this.messages.push({ role: "tool", toolName: call.name, content: text });
+        if (ok && MUTATING_TOOLS.has(call.name)) repeats.clear();
         if (ok && (call.name === "read_file" || call.name === "edit_json") && typeof call.args.path === "string") {
           this.lastReadPath = call.args.path;
           jsonRelevant = /\.json$/i.test(call.args.path);

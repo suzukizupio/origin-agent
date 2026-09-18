@@ -311,6 +311,54 @@ test("agent: 同じツール呼び出しの繰り返しを検出して止める"
   }
 });
 
+test("agent: 編集した後の読み直しは、繰り返しとして数えない", async () => {
+  const fx = await fixture();
+  try {
+    // 読む → 読む → 直す → 読み直す。3回目の read_file は内容が変わった後なので正当な確認
+    const script = [
+      formatToolCall("read_file", { path: "src/a.ts" }),
+      formatToolCall("read_file", { path: "src/a.ts" }),
+      formatToolCall("edit_file", { path: "src/a.ts", old_string: "= 1;", new_string: "= 10;" }),
+      formatToolCall("read_file", { path: "src/a.ts" }),
+      "直しました。",
+    ];
+    const brain: Provider = { name: "script", complete: async () => script.shift() ?? "終わりました。" };
+    const agent = new Agent({ provider: brain, tools: [readFileTool, editFileTool], ctx: fx.ctx });
+    const events: AgentEvent[] = [];
+    await agent.run("a.ts の 1 を 10 にして", (e) => events.push(e));
+
+    const done = events.find((e): e is Extract<AgentEvent, { type: "done" }> => e.type === "done");
+    assert.equal(done?.reason, "answered");
+    assert.equal(events.filter((e) => e.type === "tool_start").length, 4);
+  } finally {
+    await fx.dispose();
+  }
+});
+
+test("agent: 使えない web_ ツールを呼んでも、調べものの失敗として打ち切らない", async () => {
+  const fx = await fixture();
+  try {
+    const script = [
+      formatToolCall("web_search", { query: "npm test failed" }),
+      formatToolCall("read_file", { path: "src/a.ts" }),
+      "読みました。",
+    ];
+    const brain: Provider = { name: "script", complete: async () => script.shift() ?? "終わりました。" };
+    const agent = new Agent({ provider: brain, tools: [readFileTool], ctx: fx.ctx });
+    const events: AgentEvent[] = [];
+    await agent.run("a.ts を読んで", (e) => events.push(e));
+
+    const ends = events.filter((e): e is Extract<AgentEvent, { type: "tool_end" }> => e.type === "tool_end");
+    assert.equal(ends[0]?.ok, false);
+    assert.match(ends[0]?.result ?? "", /使えません/);
+    assert.equal(ends[1]?.name, "read_file");
+    const answers = events.filter((e): e is Extract<AgentEvent, { type: "assistant" }> => e.type === "assistant");
+    assert.equal(answers.at(-1)?.text, "読みました。");
+  } finally {
+    await fx.dispose();
+  }
+});
+
 test("web: HTML を本文テキストに落とす", () => {
   const { title, text } = htmlToText(
     `<html><head><title>テスト &amp; 見本</title>
