@@ -9,10 +9,11 @@
 // v0.7 で小さいモデル向けの受け止め方を2つ足した（ツールの説明文は変えていない）:
 //   - 厳密一致しないとき、空白と改行を無視して1箇所に絞れれば置換する。ただし既存の定義を消す置換は通さない
 //   - old_string が空なら、new_string をファイル末尾に追加する
+// どの書き込みも writeChecked を通す。JavaScript を壊した編集は元に戻して失敗にする（syntax.ts）。
 
-import { writeFile } from "node:fs/promises";
 import { safePath, show } from "./paths.ts";
 import { readTextFile } from "./fs.ts";
+import { writeChecked } from "./syntax.ts";
 import type { Tool, ToolContext } from "../types.ts";
 
 const PREVIEW_LINES = 6;
@@ -89,10 +90,11 @@ export const replaceLinesTool: Tool = {
     );
     if (!ok) return "ユーザーが編集を拒否しました。";
 
-    await writeFile(abs, after, "utf8");
+    const note = await writeChecked(abs, before, after, show(ctx, abs));
     return (
       `${show(ctx, abs)} の ${start}〜${end} 行目（${removed.length} 行）を ${inserted.length} 行に置き換えました。` +
-      `行番号がずれたので、続けて編集するなら read_file で読み直してください。`
+      `行番号がずれたので、続けて編集するなら read_file で読み直してください。` +
+      (note ? `\n${note}` : "")
     );
   },
 };
@@ -162,11 +164,12 @@ async function append(ctx: ToolContext, abs: string, addition: string): Promise<
   );
   if (!ok) return "ユーザーが編集を拒否しました。";
 
-  await writeFile(abs, after, "utf8");
+  const note = await writeChecked(abs, before, after, show(ctx, abs));
   return (
     `old_string が空だったので、new_string を ${show(ctx, abs)} の末尾に追加しました` +
     `（${before.split("\n").length} 行 → ${after.split("\n").length} 行）。` +
-    `ほかの場所に入れたかった場合は、その場所の既存の行を old_string にしてください。read_file で結果を確認してください。`
+    `ほかの場所に入れたかった場合は、その場所の既存の行を old_string にしてください。read_file で結果を確認してください。` +
+    (note ? `\n${note}` : "")
   );
 }
 
@@ -256,10 +259,11 @@ export const editFileTool: Tool = {
       );
       if (!ok) return "ユーザーが編集を拒否しました。";
 
-      await writeFile(abs, after, "utf8");
+      const note = await writeChecked(abs, before, after, show(ctx, abs));
       return (
         `old_string は空白や改行が実物と違いましたが、それを無視すると ${from}〜${to} 行目の1箇所に一致したので置換しました。` +
-        `read_file で結果を確認してください。`
+        `read_file で結果を確認してください。` +
+        (note ? `\n${note}` : "")
       );
     }
 
@@ -302,9 +306,9 @@ export const editFileTool: Tool = {
     );
     if (!ok) return "ユーザーが編集を拒否しました。";
 
-    await writeFile(abs, after, "utf8");
+    const note = await writeChecked(abs, before, after, show(ctx, abs));
     const delta = after.split("\n").length - before.split("\n").length;
     const deltaText = delta === 0 ? "行数は変わりません" : `行数 ${delta > 0 ? "+" : ""}${delta}`;
-    return `${show(ctx, abs)} の ${hits} 箇所を置換しました（${deltaText}）。`;
+    return `${show(ctx, abs)} の ${hits} 箇所を置換しました（${deltaText}）。${note ? `\n${note}` : ""}`;
   },
 };

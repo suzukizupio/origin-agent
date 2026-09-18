@@ -248,6 +248,51 @@ test("edit_file: old_string が空なら、new_string をファイル末尾に�
   }
 });
 
+test("edit_file: JavaScript を壊す編集は元に戻して失敗にする", async () => {
+  const fx = await fixture();
+  try {
+    const source = "export function add(a, b) {\n  return a + b;\n}\nexport function multiply(a, b) { return a * b; }\n";
+    await writeFile(join(fx.root, "math.mjs"), source, "utf8");
+    // 3B が実際にやった「同じ関数をもう一度足す」
+    await assert.rejects(
+      () => editFileTool.run({ path: "math.mjs", old_string: "", new_string: "export function multiply(a, b) { return a * b; }" }, fx.ctx),
+      /already been declared.*元に戻しました[\s\S]*すでにファイル内にあります/,
+    );
+    assert.equal(await readFile(join(fx.root, "math.mjs"), "utf8"), source);
+
+    await assert.rejects(
+      () => replaceLinesTool.run({ path: "math.mjs", start_line: 3, end_line: 3, new_text: "" }, fx.ctx),
+      /元に戻しました/,
+    );
+    assert.equal(await readFile(join(fx.root, "math.mjs"), "utf8"), source);
+  } finally {
+    await fx.dispose();
+  }
+});
+
+test("edit_file: 元から壊れているファイルは戻さず、残ったエラーを伝える", async () => {
+  const fx = await fixture();
+  try {
+    await writeFile(join(fx.root, "broken.mjs"), "export function a() {\n  return 1;\n", "utf8");
+    const result = await editFileTool.run({ path: "broken.mjs", old_string: "return 1;", new_string: "return 2;" }, fx.ctx);
+    assert.match(result, /編集前から構文エラーがあり/);
+    assert.equal(await readFile(join(fx.root, "broken.mjs"), "utf8"), "export function a() {\n  return 2;\n");
+  } finally {
+    await fx.dispose();
+  }
+});
+
+test("edit_file: TypeScript は構文確認の対象外（型注釈を誤って壊れたと判定しない）", async () => {
+  const fx = await fixture();
+  try {
+    const result = await editFileTool.run({ path: "src/a.ts", old_string: "const greeting = 1;", new_string: "const greeting: number = 1;" }, fx.ctx);
+    assert.doesNotMatch(result, /構文エラー/);
+    assert.match(await readFile(join(fx.root, "src", "a.ts"), "utf8"), /greeting: number = 1/);
+  } finally {
+    await fx.dispose();
+  }
+});
+
 test("edit_file: 空白を無視すると複数に一致するなら、置換せず行番号を示す", async () => {
   const fx = await fixture();
   try {

@@ -1,7 +1,8 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { safePath, show } from "./paths.ts";
 import { walkEntries } from "./walk.ts";
+import { writeChecked } from "./syntax.ts";
 import type { Tool, ToolContext } from "../types.ts";
 
 const MAX_READ_BYTES = 200_000;
@@ -114,7 +115,7 @@ export const writeFileTool: Tool = {
     if (!ok) return "ユーザーが書き込みを拒否しました。";
 
     await mkdir(dirname(abs), { recursive: true });
-    await writeFile(abs, args.content, "utf8");
-    return `${show(ctx, abs)} に ${args.content.split("\n").length} 行を書き込みました。`;
+    const note = await writeChecked(abs, existing, args.content, show(ctx, abs));
+    return `${show(ctx, abs)} に ${args.content.split("\n").length} 行を書き込みました。${note ? `\n${note}` : ""}`;
   },
 };
