@@ -211,6 +211,8 @@ export const editFileTool: Tool = {
       description:
         "置換したい既存の文字列をそのまま引用する。正規表現やワイルドカードは使えない。" +
         "read_file の出力の行頭にある行番号とタブは含めないこと。ファイル内でちょうど1箇所に一致する必要がある",
+      // 実測: 末尾に足すつもりの 3B が old_string ごと書き忘れた。空と同じ（末尾に追加）として受ける
+      fallback: "",
     },
     { name: "new_string", type: "string", required: true, description: "置き換え後の文字列" },
     {

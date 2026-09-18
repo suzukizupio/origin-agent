@@ -8,7 +8,7 @@ import { mkdtemp, writeFile, readFile, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { parseToolCalls, formatToolCall } from "../src/protocol.ts";
+import { parseToolCalls, formatToolCall, buildSystemPrompt } from "../src/protocol.ts";
 import { Agent } from "../src/agent.ts";
 import type { AgentEvent, Provider } from "../src/types.ts";
 import { searchTool } from "../src/tools/search.ts";
@@ -288,7 +288,8 @@ test("edit_file: JavaScript を壊す編集は元に戻して失敗にする", a
     // 3B が実際にやった「同じ関数をもう一度足す」
     await assert.rejects(
       () => editFileTool.run({ path: "math.mjs", old_string: "", new_string: "export function multiply(a, b) { return a * b; }" }, fx.ctx),
-      /already been declared.*元に戻しました[\s\S]*すでにファイル内にあります/,
+      // 足し直すのではなく、今ある行を置き換えるよう、その行を引用できる形で示す
+      /already been declared.*元に戻しました[\s\S]*multiply はすでにファイル内にあります[\s\S]*4 行目: "export function multiply\(a, b\) \{ return a \* b; \}"/,
     );
     assert.equal(await readFile(join(fx.root, "math.mjs"), "utf8"), source);
 
@@ -496,6 +497,28 @@ test("agent: 編集した後の読み直しは、繰り返しとして数えな�
     const done = events.find((e): e is Extract<AgentEvent, { type: "done" }> => e.type === "done");
     assert.equal(done?.reason, "answered");
     assert.equal(events.filter((e) => e.type === "tool_start").length, 4);
+  } finally {
+    await fx.dispose();
+  }
+});
+
+test("agent: 省略された引数は fallback で補い、プロンプト上は必須のまま見せる", async () => {
+  const fx = await fixture();
+  try {
+    const script = [
+      // 末尾に足すつもりで old_string ごと書き忘れた呼び出し
+      formatToolCall("edit_file", { path: "src/b.ts", new_string: "const added = 4;" }),
+      "足しました。",
+    ];
+    const brain: Provider = { name: "script", complete: async () => script.shift() ?? "終わりました。" };
+    const agent = new Agent({ provider: brain, tools: [editFileTool], ctx: fx.ctx });
+    const events: AgentEvent[] = [];
+    await agent.run("b.ts に足して", (e) => events.push(e));
+
+    const end = events.find((e): e is Extract<AgentEvent, { type: "tool_end" }> => e.type === "tool_end");
+    assert.equal(end?.ok, true, end?.result);
+    assert.equal(await readFile(join(fx.root, "src", "b.ts"), "utf8"), "const greeting = 3;\nconst added = 4;\n");
+    assert.match(buildSystemPrompt([editFileTool], { root: fx.root, outline: "" }), /old_string \(string, 必須\)/);
   } finally {
     await fx.dispose();
   }

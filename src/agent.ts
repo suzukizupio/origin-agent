@@ -347,14 +347,18 @@ export class Agent {
       return { text: `エラー: '${call.name}' は現在のモードでは使えません。使えるのは: ${known}`, ok: false };
     }
 
-    const missing = tool.params.filter((p) => p.required && call.args[p.name] === undefined);
+    const args = { ...call.args };
+    for (const p of tool.params) {
+      if (args[p.name] === undefined && p.fallback !== undefined) args[p.name] = p.fallback;
+    }
+    const missing = tool.params.filter((p) => p.required && args[p.name] === undefined);
     if (missing.length > 0) {
       return { text: `エラー: 引数が足りません: ${missing.map((p) => p.name).join(", ")}`, ok: false };
     }
 
     try {
       let denied = false;
-      const text = await tool.run(call.args, { ...this.ctx, confirm: async (message) => {
+      const text = await tool.run(args, { ...this.ctx, confirm: async (message) => {
         const accepted = await this.ctx.confirm(message);
         if (!accepted) denied = true;
         return accepted;

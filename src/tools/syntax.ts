@@ -42,12 +42,27 @@ export async function writeChecked(abs: string, before: string | null, after: st
     await writeFile(abs, after, "utf8");
     return `編集前から構文エラーがあり、編集後も残っています: ${error}`;
   }
-  const duplicate = /already been declared|Duplicate export/.test(error);
+  const duplicate = error.match(/Identifier '([\w$]+)' has already been declared|Duplicate export of '([\w$]+)'/);
+  const name = duplicate?.[1] ?? duplicate?.[2];
+  const existing = name === undefined ? [] : definitionLines(before, name);
   throw new Error(
     [
       `この編集で ${shown} が JavaScript として読めなくなったため（${error}）、編集を取り消して元に戻しました。`,
-      duplicate ? "その名前はすでにファイル内にあります。同じものを足し直さず、read_file で今の内容を確かめてください。" : "",
-      "read_file で今の内容を確かめてから、構文が正しくなるように編集してください。",
-    ].filter(Boolean).join("\n"),
+      ...(existing.length > 0
+        // 実測: export なしで足した関数に export を付けたくて、export 付きの同じ関数を足し直し続けた
+        ? [`${name} はすでにファイル内にあります。足し直さず、今ある行を old_string にして置き換えてください:`, ...existing]
+        : ["read_file で今の内容を確かめてから、構文が正しくなるように編集してください。"]),
+    ].join("\n"),
   );
+}
+
+/** name を定義・export している行（行番号つき、JSON 文字列の形） */
+function definitionLines(text: string, name: string): string[] {
+  const escaped = name.replace(/[$]/g, "\\$");
+  const pattern = new RegExp(`\\b(?:function\\s*\\*?\\s*|class\\s+|const\\s+|let\\s+|var\\s+)${escaped}\\b|export\\s*\\{[^}]*\\b${escaped}\\b`);
+  return text.split("\n")
+    .map((line, index) => ({ line: line.trim(), number: index + 1 }))
+    .filter(({ line }) => pattern.test(line))
+    .slice(0, 3)
+    .map(({ line, number }) => `  ${number} 行目: ${JSON.stringify(line)}`);
 }

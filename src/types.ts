@@ -32,6 +32,11 @@ export type ToolParam = {
   type: "string" | "number" | "boolean" | "json";
   required: boolean;
   description: string;
+  /**
+   * 頭脳が省略したときに補う値。ツール一覧（プロンプト）には必須のまま見せる。
+   * 説明文を変えると小さいモデルの振る舞いが別の課題でも変わるため、受け取る側だけを緩める。
+   */
+  fallback?: unknown;
 };
 
 export type Tool = {
