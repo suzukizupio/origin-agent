@@ -1,0 +1,80 @@
+{
+  "startedAt": "2026-09-16T00:40:08.403Z",
+  "provider": "ollama:qwen2.5-coder:3b",
+  "repeat": 3,
+  "passed": 19,
+  "total": 24,
+  "tasks": [
+    {
+      "id": "port-change",
+      "title": "設定値を1つだけ変更する",
+      "passed": 1,
+      "total": 3,
+      "meanMs": 51633,
+      "failures": [
+        "Expected values to be strictly deep-equal: + actual - expected { name: 'practice', + port: 3000 - port: 4000 }",
+        "Expected values to be strictly deep-equal: + actual - expected { name: 'practice', + port: 3000 - port: 4000 }"
+      ]
+    },
+    {
+      "id": "quoted-value",
+      "title": "引用符つきの文字列を置換する",
+      "passed": 3,
+      "total": 3,
+      "meanMs": 33633,
+      "failures": []
+    },
+    {
+      "id": "add-field",
+      "title": "既存を壊さずに項目を足す",
+      "passed": 0,
+      "total": 3,
+      "meanMs": 47693,
+      "failures": [
+        "Expected values to be strictly deep-equal: + actual - expected { language: 'ja', - theme: 'dark' }",
+        "Expected values to be strictly deep-equal: + actual - expected { language: 'ja', - theme: 'dark' }",
+        "Expected values to be strictly deep-equal: + actual - expected { language: 'ja', - theme: 'dark' }"
+      ]
+    },
+    {
+      "id": "find-symbol",
+      "title": "定義がどのファイルにあるか調べる",
+      "passed": 3,
+      "total": 3,
+      "meanMs": 16758,
+      "failures": []
+    },
+    {
+      "id": "preserve-rest",
+      "title": "長いファイルの1行だけを変える",
+      "passed": 3,
+      "total": 3,
+      "meanMs": 51382,
+      "failures": []
+    },
+    {
+      "id": "name-in-session",
+      "title": "同じ会話の中で名前を覚える",
+      "passed": 3,
+      "total": 3,
+      "meanMs": 1803,
+      "failures": []
+    },
+    {
+      "id": "name-after-restart",
+      "title": "再起動しても保存した呼び方を読み戻す",
+      "passed": 3,
+      "total": 3,
+      "meanMs": 10,
+      "failures": []
+    },
+    {
+      "id": "no-fabricated-name",
+      "title": "知らない名前を作らない",
+      "passed": 3,
+      "total": 3,
+      "meanMs": 1,
+      "failures": []
+    }
+  ]
+}

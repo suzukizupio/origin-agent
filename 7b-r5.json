@@ -1,0 +1,28 @@
+{
+  "startedAt": "2026-09-16T09:25:24.241Z",
+  "provider": "ollama:qwen2.5-coder:7b",
+  "repeat": 5,
+  "timeoutSec": 300,
+  "passed": 9,
+  "total": 10,
+  "tasks": [
+    {
+      "id": "add-field",
+      "title": "既存を壊さずに項目を足す",
+      "passed": 4,
+      "total": 5,
+      "meanMs": 211295,
+      "failures": [
+        "Expected values to be strictly deep-equal: + actual - expected { - language: 'ja', theme: 'dark' }"
+      ]
+    },
+    {
+      "id": "preserve-rest",
+      "title": "長いファイルの1行だけを変える",
+      "passed": 5,
+      "total": 5,
+      "meanMs": 240199,
+      "failures": []
+    }
+  ]
+}

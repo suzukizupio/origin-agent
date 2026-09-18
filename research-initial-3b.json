@@ -1,0 +1,592 @@
+{
+  "startedAt": "2026-09-17T05:31:26.759Z",
+  "provider": "ollama:qwen2.5-coder:3b",
+  "source": "fixed-fixtures",
+  "completed": true,
+  "passed": 2,
+  "total": 6,
+  "attempts": [
+    {
+      "id": "screenshot",
+      "trial": 1,
+      "ok": false,
+      "ms": 54038.4108,
+      "error": "回答まで完了すること",
+      "inputs": [
+        "大阪ってどこですか？",
+        "秋田と岩手ってどっちが大きいですか？",
+        "面積はどうですか？"
+      ],
+      "answers": [],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "大阪 概要 位置 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 大阪の概要\nURL: https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf\n抜粋: 大阪府は近畿地方のほぼ中央に位置します。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 30782.1982,
+              "firstTokenMs": 25575.8286,
+              "loadMs": 3857.7025,
+              "promptMs": 21658.165,
+              "generationMs": 5208.865,
+              "promptTokens": 1311,
+              "outputTokens": 68
+            }
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "大阪府人口"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 大阪の概要\nURL: https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf\n抜粋: 大阪府は近畿地方のほぼ中央に位置します。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 7681.8525000000045,
+              "firstTokenMs": 2306.932100000002,
+              "loadMs": 15.0393,
+              "promptMs": 2266.898,
+              "generationMs": 5375.066,
+              "promptTokens": 1485,
+              "outputTokens": 69
+            }
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "大阪府面積"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 大阪の概要\nURL: https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf\n抜粋: 大阪府は近畿地方のほぼ中央に位置します。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 7777.002500000002,
+              "firstTokenMs": 2280.8939000000028,
+              "loadMs": 11.8238,
+              "promptMs": 2250.026,
+              "generationMs": 5495.947,
+              "promptTokens": 1660,
+              "outputTokens": 69
+            }
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "大阪府面積"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 大阪の概要\nURL: https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf\n抜粋: 大阪府は近畿地方のほぼ中央に位置します。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 7790.311300000001,
+              "firstTokenMs": 2323.565300000002,
+              "loadMs": 12.7736,
+              "promptMs": 2285.521,
+              "generationMs": 5466.749,
+              "promptTokens": 1835,
+              "outputTokens": 69
+            }
+          },
+          {
+            "type": "notice",
+            "message": "web_search を同じ引数で 3 回呼ぼうとしたので中断しました。頭脳が行き詰まっています。"
+          },
+          {
+            "type": "done",
+            "reason": "stuck"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "screenshot",
+      "trial": 2,
+      "ok": false,
+      "ms": 25953.5988,
+      "error": "回答まで完了すること",
+      "inputs": [
+        "大阪ってどこですか？",
+        "秋田と岩手ってどっちが大きいですか？",
+        "面積はどうですか？"
+      ],
+      "answers": [],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "大阪 概要 位置 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 大阪の概要\nURL: https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf\n抜粋: 大阪府は近畿地方のほぼ中央に位置します。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 4521.583200000001,
+              "firstTokenMs": 109.76490000000194,
+              "loadMs": 10.133,
+              "promptMs": 78.887,
+              "generationMs": 4411.39,
+              "promptTokens": 1311,
+              "outputTokens": 59
+            }
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "大阪府人口"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 大阪の概要\nURL: https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf\n抜粋: 大阪府は近畿地方のほぼ中央に位置します。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 6883.548699999999,
+              "firstTokenMs": 2273.1589999999997,
+              "loadMs": 9.2184,
+              "promptMs": 2242.8,
+              "generationMs": 4610.097,
+              "promptTokens": 1476,
+              "outputTokens": 60
+            }
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "大阪府面積"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 大阪の概要\nURL: https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf\n抜粋: 大阪府は近畿地方のほぼ中央に位置します。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 7061.415399999991,
+              "firstTokenMs": 2339.6771999999983,
+              "loadMs": 12.316,
+              "promptMs": 2307.326,
+              "generationMs": 4721.392,
+              "promptTokens": 1642,
+              "outputTokens": 60
+            }
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "大阪府面積"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 大阪の概要\nURL: https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf\n抜粋: 大阪府は近畿地方のほぼ中央に位置します。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 7482.159100000004,
+              "firstTokenMs": 2516.3668000000034,
+              "loadMs": 9.0706,
+              "promptMs": 2479.628,
+              "generationMs": 4965.464,
+              "promptTokens": 1808,
+              "outputTokens": 60
+            }
+          },
+          {
+            "type": "notice",
+            "message": "web_search を同じ引数で 3 回呼ぼうとしたので中断しました。頭脳が行き詰まっています。"
+          },
+          {
+            "type": "done",
+            "reason": "stuck"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "unfamiliar-comparison",
+      "trial": 1,
+      "ok": false,
+      "ms": 12374.594499999992,
+      "error": "The input did not match the regular expression /白波市[^。\\n]{0,30}(?:広い|大きい)/. Input:\n\n'青葉市\\n\\n参照元:\\nhttps://example.com/aoba\\nhttps://example.com/shiranami'\n",
+      "inputs": [
+        "青葉市と白波市の面積を比べてください"
+      ],
+      "answers": [
+        "青葉市\n\n参照元:\nhttps://example.com/aoba\nhttps://example.com/shiranami"
+      ],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "青葉市 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 青葉市の概要\nURL: https://example.com/aoba\n抜粋: これは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/aoba",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "青葉市\nhttps://example.com/aoba\n[Webページの参考資料]\nこれは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "白波市 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 白波市の概要\nURL: https://example.com/shiranami\n抜粋: これは架空の市の検査用資料です。白波市の面積は2,345.6平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/shiranami",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "白波市\nhttps://example.com/shiranami\n[Webページの参考資料]\nこれは架空の市の検査用資料です。白波市の面積は2,345.6平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 12367.010899999994,
+              "firstTokenMs": 12113.42779999999,
+              "loadMs": 9.555,
+              "promptMs": 12082.811,
+              "generationMs": 253.559,
+              "promptTokens": 1758,
+              "outputTokens": 4
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "青葉市\n\n参照元:\nhttps://example.com/aoba\nhttps://example.com/shiranami"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "unfamiliar-comparison",
+      "trial": 2,
+      "ok": false,
+      "ms": 379.34649999999965,
+      "error": "The input did not match the regular expression /白波市[^。\\n]{0,30}(?:広い|大きい)/. Input:\n\n'青葉市\\n\\n参照元:\\nhttps://example.com/aoba\\nhttps://example.com/shiranami'\n",
+      "inputs": [
+        "青葉市と白波市の面積を比べてください"
+      ],
+      "answers": [
+        "青葉市\n\n参照元:\nhttps://example.com/aoba\nhttps://example.com/shiranami"
+      ],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "青葉市 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 青葉市の概要\nURL: https://example.com/aoba\n抜粋: これは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/aoba",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "青葉市\nhttps://example.com/aoba\n[Webページの参考資料]\nこれは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "白波市 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 白波市の概要\nURL: https://example.com/shiranami\n抜粋: これは架空の市の検査用資料です。白波市の面積は2,345.6平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/shiranami",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "白波市\nhttps://example.com/shiranami\n[Webページの参考資料]\nこれは架空の市の検査用資料です。白波市の面積は2,345.6平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 375.39060000001336,
+              "firstTokenMs": 127.09189999999944,
+              "loadMs": 14.03,
+              "promptMs": 86.808,
+              "generationMs": 247.904,
+              "promptTokens": 1758,
+              "outputTokens": 4
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "青葉市\n\n参照元:\nhttps://example.com/aoba\nhttps://example.com/shiranami"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "missing-fact",
+      "trial": 1,
+      "ok": true,
+      "ms": 6454.783899999995,
+      "inputs": [
+        "青葉市の人口は何人ですか？"
+      ],
+      "answers": [
+        "未確認\n\n参照元:\nhttps://example.com/aoba"
+      ],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "青葉市 人口 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 青葉市の概要\nURL: https://example.com/aoba\n抜粋: これは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/aoba",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "青葉市\nhttps://example.com/aoba\n[Webページの参考資料]\nこれは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 6452.331099999996,
+              "firstTokenMs": 6287.105499999991,
+              "loadMs": 11.9616,
+              "promptMs": 6257.721,
+              "generationMs": 164.255,
+              "promptTokens": 1441,
+              "outputTokens": 3
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "未確認\n\n参照元:\nhttps://example.com/aoba"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "missing-fact",
+      "trial": 2,
+      "ok": true,
+      "ms": 290.63610000000335,
+      "inputs": [
+        "青葉市の人口は何人ですか？"
+      ],
+      "answers": [
+        "未確認\n\n参照元:\nhttps://example.com/aoba"
+      ],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "青葉市 人口 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 青葉市の概要\nURL: https://example.com/aoba\n抜粋: これは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/aoba",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "青葉市\nhttps://example.com/aoba\n[Webページの参考資料]\nこれは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 289.16909999999916,
+              "firstTokenMs": 120.17289999999048,
+              "loadMs": 13.4636,
+              "promptMs": 86.499,
+              "generationMs": 168.674,
+              "promptTokens": 1441,
+              "outputTokens": 3
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "未確認\n\n参照元:\nhttps://example.com/aoba"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ]
+      ]
+    }
+  ]
+}

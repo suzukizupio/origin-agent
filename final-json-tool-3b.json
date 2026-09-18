@@ -1,0 +1,713 @@
+{
+  "startedAt": "2026-09-16T15:23:58.184Z",
+  "completed": true,
+  "provider": "ollama:qwen2.5-coder:3b",
+  "repeat": 3,
+  "timeoutSec": 300,
+  "passed": 10,
+  "total": 12,
+  "tasks": [
+    {
+      "id": "add-field",
+      "title": "既存を壊さずに項目を足す",
+      "passed": 3,
+      "total": 3,
+      "meanMs": 37108,
+      "failures": [],
+      "tools": [
+        "list_files",
+        "search",
+        "read_file",
+        "edit_json",
+        "edit_file",
+        "replace_lines"
+      ],
+      "attempts": [
+        {
+          "ok": true,
+          "ms": 37682,
+          "trace": [
+            {
+              "input": "settings.json に \"language\": \"ja\" を追加してください。既存の設定は残してください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "settings.json",
+                    "key": "language",
+                    "value": "ja"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "settings.json の \"language\" を \"ja\" にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "OK, 読み込みます。"
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "settings.json"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t{\n    2\t  \"theme\": \"dark\",\n    3\t  \"language\": \"ja\"\n    4\t}\n    5\t",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "OK, 読み込みました。\n\nsettings.json の内容は以下の通りです：\n\n```json\n{\n  \"theme\": \"dark\",\n  \"language\": \"ja\"\n}\n```\n\nこれで完了しました。何か他に必要な操作が必要ですか？"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "ms": 30927,
+          "trace": [
+            {
+              "input": "settings.json に \"language\": \"ja\" を追加してください。既存の設定は残してください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "settings.json",
+                    "key": "language",
+                    "value": "ja"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "settings.json の \"language\" を \"ja\" にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了です。必要な操作があれば教えてください。"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "ms": 42716,
+          "trace": [
+            {
+              "input": "settings.json に \"language\": \"ja\" を追加してください。既存の設定は残してください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "settings.json",
+                    "key": "language",
+                    "value": "ja"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "settings.json の \"language\" を \"ja\" にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "OK, 読み込みます。"
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "settings.json"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t{\n    2\t  \"theme\": \"dark\",\n    3\t  \"language\": \"ja\"\n    4\t}\n    5\t",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "OK, 読み込みました。\n設定ファイルの内容は変更されました。これで完了です。何か他に必要なことはありますか？"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preserve-rest",
+      "title": "長いファイルの1行だけを変える",
+      "passed": 1,
+      "total": 3,
+      "meanMs": 66384,
+      "failures": [
+        "TIMEOUT_MS が変わっていること",
+        "TIMEOUT_MS が変わっていること"
+      ],
+      "tools": [
+        "list_files",
+        "search",
+        "read_file",
+        "edit_json",
+        "edit_file",
+        "replace_lines"
+      ],
+      "attempts": [
+        {
+          "ok": false,
+          "ms": 67292,
+          "reason": "TIMEOUT_MS が変わっていること",
+          "trace": [
+            {
+              "input": "src/limits.ts の TIMEOUT_MS を 20_000 から 30_000 に変更してください。他の行は一切変えないでください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "TIMEOUT_MS: 20_000",
+                    "new_string": "TIMEOUT_MS: 30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "エラー: old_string がファイル内に見つかりません。\nread_file で現在の内容を確認し、空白や改行まで正確に引用してください。\n行頭の行番号とタブ（read_file が付けたもの）は含めないこと。\nファイル内の引用符を落としていないか確認してください。一意な短い部分だけを old_string にする方法もあります。\nどこを直すか分からない場合は、先に search で該当箇所を探してください。",
+                  "ok": false
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "src/limits.ts"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t// 各種の上限値。\n    2\texport const MAX_RETRY = 3;\n    3\texport const TIMEOUT_MS = 20_000;\n    4\texport const MAX_FILE_BYTES = 1_000_000;\n    5\texport const MAX_LINE_LENGTH = 200;\n    6\texport const PREVIEW_LINES = 6;\n    7\t\n    8\texport function describe(): string {\n    9\t  return `retry=${MAX_RETRY} timeout=${TIMEOUT_MS}`;\n   10\t}\n   11\t",
+                  "ok": true
+                },
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "TIMEOUT_MS: 20_000",
+                    "new_string": "TIMEOUT_MS: 30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "エラー: old_string がファイル内に見つかりません。\nread_file で現在の内容を確認し、空白や改行まで正確に引用してください。\n行頭の行番号とタブ（read_file が付けたもの）は含めないこと。\nファイル内の引用符を落としていないか確認してください。一意な短い部分だけを old_string にする方法もあります。\nどこを直すか分からない場合は、先に search で該当箇所を探してください。",
+                  "ok": false
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "src/limits.ts"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t// 各種の上限値。\n    2\texport const MAX_RETRY = 3;\n    3\texport const TIMEOUT_MS = 20_000;\n    4\texport const MAX_FILE_BYTES = 1_000_000;\n    5\texport const MAX_LINE_LENGTH = 200;\n    6\texport const PREVIEW_LINES = 6;\n    7\t\n    8\texport function describe(): string {\n    9\t  return `retry=${MAX_RETRY} timeout=${TIMEOUT_MS}`;\n   10\t}\n   11\t",
+                  "ok": true
+                },
+                {
+                  "type": "notice",
+                  "message": "edit_file を同じ引数で 3 回呼ぼうとしたので中断しました。頭脳が行き詰まっています。"
+                },
+                {
+                  "type": "done",
+                  "reason": "stuck"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "ms": 56811,
+          "trace": [
+            {
+              "input": "src/limits.ts の TIMEOUT_MS を 20_000 から 30_000 に変更してください。他の行は一切変えないでください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "TIMEOUT_MS: 20_000",
+                    "new_string": "TIMEOUT_MS: 30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "エラー: old_string がファイル内に見つかりません。\nread_file で現在の内容を確認し、空白や改行まで正確に引用してください。\n行頭の行番号とタブ（read_file が付けたもの）は含めないこと。\nファイル内の引用符を落としていないか確認してください。一意な短い部分だけを old_string にする方法もあります。\nどこを直すか分からない場合は、先に search で該当箇所を探してください。",
+                  "ok": false
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "src/limits.ts"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t// 各種の上限値。\n    2\texport const MAX_RETRY = 3;\n    3\texport const TIMEOUT_MS = 20_000;\n    4\texport const MAX_FILE_BYTES = 1_000_000;\n    5\texport const MAX_LINE_LENGTH = 200;\n    6\texport const PREVIEW_LINES = 6;\n    7\t\n    8\texport function describe(): string {\n    9\t  return `retry=${MAX_RETRY} timeout=${TIMEOUT_MS}`;\n   10\t}\n   11\t",
+                  "ok": true
+                },
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "20_000",
+                    "new_string": "30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "src/limits.ts の 1 箇所を置換しました（行数は変わりません）。",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了！LIMITS.ts ファイルの TIMEOUT_MS を 30_000 に変更しました。他の行は一切変えませんでした。"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": false,
+          "ms": 75049,
+          "reason": "TIMEOUT_MS が変わっていること",
+          "trace": [
+            {
+              "input": "src/limits.ts の TIMEOUT_MS を 20_000 から 30_000 に変更してください。他の行は一切変えないでください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "TIMEOUT_MS: 20_000",
+                    "new_string": "TIMEOUT_MS: 30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "エラー: old_string がファイル内に見つかりません。\nread_file で現在の内容を確認し、空白や改行まで正確に引用してください。\n行頭の行番号とタブ（read_file が付けたもの）は含めないこと。\nファイル内の引用符を落としていないか確認してください。一意な短い部分だけを old_string にする方法もあります。\nどこを直すか分からない場合は、先に search で該当箇所を探してください。",
+                  "ok": false
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "src/limits.ts"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t// 各種の上限値。\n    2\texport const MAX_RETRY = 3;\n    3\texport const TIMEOUT_MS = 20_000;\n    4\texport const MAX_FILE_BYTES = 1_000_000;\n    5\texport const MAX_LINE_LENGTH = 200;\n    6\texport const PREVIEW_LINES = 6;\n    7\t\n    8\texport function describe(): string {\n    9\t  return `retry=${MAX_RETRY} timeout=${TIMEOUT_MS}`;\n   10\t}\n   11\t",
+                  "ok": true
+                },
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "TIMEOUT_MS: 20_000",
+                    "new_string": "TIMEOUT_MS: 30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "エラー: old_string がファイル内に見つかりません。\nread_file で現在の内容を確認し、空白や改行まで正確に引用してください。\n行頭の行番号とタブ（read_file が付けたもの）は含めないこと。\nファイル内の引用符を落としていないか確認してください。一意な短い部分だけを old_string にする方法もあります。\nどこを直すか分からない場合は、先に search で該当箇所を探してください。",
+                  "ok": false
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "src/limits.ts"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t// 各種の上限値。\n    2\texport const MAX_RETRY = 3;\n    3\texport const TIMEOUT_MS = 20_000;\n    4\texport const MAX_FILE_BYTES = 1_000_000;\n    5\texport const MAX_LINE_LENGTH = 200;\n    6\texport const PREVIEW_LINES = 6;\n    7\t\n    8\texport function describe(): string {\n    9\t  return `retry=${MAX_RETRY} timeout=${TIMEOUT_MS}`;\n   10\t}\n   11\t",
+                  "ok": true
+                },
+                {
+                  "type": "notice",
+                  "message": "edit_file を同じ引数で 3 回呼ぼうとしたので中断しました。頭脳が行き詰まっています。"
+                },
+                {
+                  "type": "done",
+                  "reason": "stuck"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "json-flag",
+      "title": "真偽値を変更し、隣の入れ子の設定を残す",
+      "passed": 3,
+      "total": 3,
+      "meanMs": 48432,
+      "failures": [],
+      "tools": [
+        "list_files",
+        "search",
+        "read_file",
+        "edit_json",
+        "edit_file",
+        "replace_lines"
+      ],
+      "attempts": [
+        {
+          "ok": true,
+          "ms": 48732,
+          "trace": [
+            {
+              "input": "feature.json の enabled を true にしてください。service の設定はそのまま残してください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "feature.json",
+                    "key": "enabled",
+                    "value": true
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "feature.json の \"enabled\" を true にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "feature.json"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t{\n    2\t  \"enabled\": true,\n    3\t  \"service\": {\"name\": \"demo\", \"retries\": 2}\n    4\t}\n    5\t",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了しました。feature.json の enabled を true に設定し、他のキーは保持しました。"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "ms": 47857,
+          "trace": [
+            {
+              "input": "feature.json の enabled を true にしてください。service の設定はそのまま残してください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "feature.json",
+                    "key": "enabled",
+                    "value": true
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "feature.json の \"enabled\" を true にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "feature.json"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t{\n    2\t  \"enabled\": true,\n    3\t  \"service\": {\"name\": \"demo\", \"retries\": 2}\n    4\t}\n    5\t",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了しました。feature.json の enabled を true に設定し、他のキーは保持しました。"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "ms": 48706,
+          "trace": [
+            {
+              "input": "feature.json の enabled を true にしてください。service の設定はそのまま残してください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "feature.json",
+                    "key": "enabled",
+                    "value": true
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "feature.json の \"enabled\" を true にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "feature.json"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t{\n    2\t  \"enabled\": true,\n    3\t  \"service\": {\"name\": \"demo\", \"retries\": 2}\n    4\t}\n    5\t",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了しました。feature.json の enabled を true に設定し、他のキーは保持した状態です。これで feature.json が更新されました。"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "json-array",
+      "title": "配列の項目を追加し、既存の設定を残す",
+      "passed": 3,
+      "total": 3,
+      "meanMs": 43438,
+      "failures": [],
+      "tools": [
+        "list_files",
+        "search",
+        "read_file",
+        "edit_json",
+        "edit_file",
+        "replace_lines"
+      ],
+      "attempts": [
+        {
+          "ok": true,
+          "ms": 39915,
+          "trace": [
+            {
+              "input": "app.json に \"locales\": [\"ja\", \"en\"] を追加してください。他の設定は変更しないでください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "app.json",
+                    "key": "locales",
+                    "value": [
+                      "ja",
+                      "en"
+                    ]
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "app.json の \"locales\" を [\"ja\",\"en\"] にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了です。何か他が必要ですか？"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "ms": 47778,
+          "trace": [
+            {
+              "input": "app.json に \"locales\": [\"ja\", \"en\"] を追加してください。他の設定は変更しないでください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "app.json",
+                    "key": "locales",
+                    "value": [
+                      "ja",
+                      "en"
+                    ]
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "app.json の \"locales\" を [\"ja\",\"en\"] にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "app.json"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t{\n    2\t  \"name\": \"demo\",\n    3\t  \"cache\": {\"enabled\": true},\n    4\t  \"locales\": [\"ja\",\"en\"]\n    5\t}\n    6\t",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了しました。app.json の locales キーが追加されました。他の設定は変更されていません。"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "ms": 42622,
+          "trace": [
+            {
+              "input": "app.json に \"locales\": [\"ja\", \"en\"] を追加してください。他の設定は変更しないでください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "app.json",
+                    "key": "locales",
+                    "value": [
+                      "ja",
+                      "en"
+                    ]
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "app.json の \"locales\" を [\"ja\",\"en\"] にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了です。これで app.json には \"locales\": [\"ja\", \"en\"] が追加されました。必要な操作があれば、いつでもお知らせください。"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

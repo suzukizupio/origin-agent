@@ -1,0 +1,53 @@
+{
+  "startedAt": "2026-09-16T22:52:17.469Z",
+  "provider": "ollama:qwen2.5-coder:3b",
+  "buffered": true,
+  "repeat": 2,
+  "promptChars": 1559,
+  "meanFirstTextMs": 4380,
+  "meanElapsedMs": 4380,
+  "results": [
+    {
+      "round": 1,
+      "question": "こんにちは。ひとことで挨拶してください。",
+      "firstTextMs": 954,
+      "elapsedMs": 954,
+      "answer": "こんにちは！どういたしまして？"
+    },
+    {
+      "round": 1,
+      "question": "JavaScriptの変数を、初心者向けに2文で説明してください。",
+      "firstTextMs": 16614,
+      "elapsedMs": 16614,
+      "answer": "JavaScript では、変数はデータを保存するための名前です。最初の変数を作成するには、`var`, `let`, 或は `const` を使用します。\n\n- `var`: 変数が関数スコープで宣言されるため、関数内で定義された変数はその関数外でもアクセスできます。\n  ```javascript\n  var message = \"Hello, World!\";\n  ```\n\n- `let` 和 `const`: 这两个关键字用于声明块级作用域的变量。它们的主要区别在于，`let` 允许在块内重新赋值，而 `const` 声明的变量一旦被赋值就不能再改变。\n  ```javascript\n  let count = 0;\n  const PI = 3.14;\n  ```\n\nこれらの変数は、JavaScript の基本的な構造と機能を理解するのに非常に重要です。"
+    },
+    {
+      "round": 1,
+      "question": "私の名前はハルです。短く挨拶してください。",
+      "firstTextMs": 889,
+      "elapsedMs": 889,
+      "answer": "こんにちは、ハルさん！"
+    },
+    {
+      "round": 2,
+      "question": "こんにちは。ひとことで挨拶してください。",
+      "firstTextMs": 880,
+      "elapsedMs": 880,
+      "answer": "こんにちは！どういたしまして？"
+    },
+    {
+      "round": 2,
+      "question": "JavaScriptの変数を、初心者向けに2文で説明してください。",
+      "firstTextMs": 5935,
+      "elapsedMs": 5935,
+      "answer": "JavaScript の変数とは、プログラムの中でデータを保存するための名前付きの場所です。最初は、変数には特定の値が代入されます。その後、その値は変更できます。変数は大文字と小文字に区別され、同じ名前の変数を作成することはできません。"
+    },
+    {
+      "round": 2,
+      "question": "私の名前はハルです。短く挨拶してください。",
+      "firstTextMs": 1010,
+      "elapsedMs": 1010,
+      "answer": "こんにちは、ハルさん！"
+    }
+  ]
+}

@@ -1,0 +1,629 @@
+{
+  "startedAt": "2026-09-17T05:35:33.984Z",
+  "provider": "ollama:qwen2.5-coder:3b",
+  "source": "fixed-fixtures",
+  "completed": true,
+  "passed": 3,
+  "total": 6,
+  "attempts": [
+    {
+      "id": "screenshot",
+      "trial": 1,
+      "ok": false,
+      "ms": 29523.484,
+      "error": "The input did not match the regular expression /近畿|関西/. Input:\n\n'大阪府\\n' +\n  '\\n' +\n  '[出典](https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf)'\n",
+      "inputs": [
+        "大阪ってどこですか？",
+        "秋田と岩手ってどっちが大きいですか？",
+        "面積はどうですか？"
+      ],
+      "answers": [
+        "大阪府\n\n[出典](https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf)",
+        "秋田県と岩手県を比べますね。「大きい」は、面積と人口のどちらを知りたいですか？",
+        "秋田県: 11,637平方キロメートル  \n岩手県: 15,275.04平方キロメートル\n\n岩手県の面積の方が大きいです。\n\n参照元:\nhttps://common3.pref.akita.lg.jp/kigyo-rich/merit/\nhttps://www.pref.iwate.jp/kensei/profile/1000649.html"
+      ],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "大阪 概要 位置 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 大阪の概要\nURL: https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf\n抜粋: 大阪府は近畿地方のほぼ中央に位置します。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 12640.6226,
+              "firstTokenMs": 9173.0509,
+              "loadMs": 10.7746,
+              "promptMs": 9099.799,
+              "generationMs": 3472.33,
+              "promptTokens": 380,
+              "outputTokens": 44
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "大阪府\n\n[出典](https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf)"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ],
+        [
+          {
+            "type": "assistant",
+            "text": "秋田県と岩手県を比べますね。「大きい」は、面積と人口のどちらを知りたいですか？"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ],
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "秋田県 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 秋田県の概要\nURL: https://common3.pref.akita.lg.jp/kigyo-rich/merit/\n抜粋: 秋田県の総面積は11,637平方キロメートルです。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://common3.pref.akita.lg.jp/kigyo-rich/merit/",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "秋田県\nhttps://common3.pref.akita.lg.jp/kigyo-rich/merit/\n[Webページの参考資料]\n秋田県の総面積は11,637平方キロメートルです。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "岩手県 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 岩手県の概要\nURL: https://www.pref.iwate.jp/kensei/profile/1000649.html\n抜粋: 岩手県の面積は15,275.04平方キロメートルです。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://www.pref.iwate.jp/kensei/profile/1000649.html",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "岩手県\nhttps://www.pref.iwate.jp/kensei/profile/1000649.html\n[Webページの参考資料]\n岩手県の面積は15,275.04平方キロメートルです。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 16858.7718,
+              "firstTokenMs": 12428.1253,
+              "loadMs": 15.1297,
+              "promptMs": 12392.53,
+              "generationMs": 4430.94,
+              "promptTokens": 729,
+              "outputTokens": 50
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "秋田県: 11,637平方キロメートル  \n岩手県: 15,275.04平方キロメートル\n\n岩手県の面積の方が大きいです。\n\n参照元:\nhttps://common3.pref.akita.lg.jp/kigyo-rich/merit/\nhttps://www.pref.iwate.jp/kensei/profile/1000649.html"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "screenshot",
+      "trial": 2,
+      "ok": false,
+      "ms": 23716.961499999998,
+      "error": "The input did not match the regular expression /近畿|関西/. Input:\n\n'大阪府\\n' +\n  '\\n' +\n  '[出典] https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf'\n",
+      "inputs": [
+        "大阪ってどこですか？",
+        "秋田と岩手ってどっちが大きいですか？",
+        "面積はどうですか？"
+      ],
+      "answers": [
+        "大阪府\n\n[出典] https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf",
+        "秋田県と岩手県を比べますね。「大きい」は、面積と人口のどちらを知りたいですか？",
+        "秋田県: 11,637平方キロメートル  \n岩手県: 15,275.04平方キロメートル\n\n岩手県の面積の方が大きいです。\n\n参照元:\nhttps://common3.pref.akita.lg.jp/kigyo-rich/merit/\nhttps://www.pref.iwate.jp/kensei/profile/1000649.html"
+      ],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "大阪 概要 位置 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 大阪の概要\nURL: https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf\n抜粋: 大阪府は近畿地方のほぼ中央に位置します。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 7676.3773,
+              "firstTokenMs": 4086.1543999999994,
+              "loadMs": 19.3458,
+              "promptMs": 4033.358,
+              "generationMs": 3590.066,
+              "promptTokens": 380,
+              "outputTokens": 43
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "大阪府\n\n[出典] https://www.pref.osaka.lg.jp/documents/61555/p3-420suidounofukyuujyoukyou_1.pdf"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ],
+        [
+          {
+            "type": "assistant",
+            "text": "秋田県と岩手県を比べますね。「大きい」は、面積と人口のどちらを知りたいですか？"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ],
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "秋田県 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 秋田県の概要\nURL: https://common3.pref.akita.lg.jp/kigyo-rich/merit/\n抜粋: 秋田県の総面積は11,637平方キロメートルです。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://common3.pref.akita.lg.jp/kigyo-rich/merit/",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "秋田県\nhttps://common3.pref.akita.lg.jp/kigyo-rich/merit/\n[Webページの参考資料]\n秋田県の総面積は11,637平方キロメートルです。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "岩手県 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 岩手県の概要\nURL: https://www.pref.iwate.jp/kensei/profile/1000649.html\n抜粋: 岩手県の面積は15,275.04平方キロメートルです。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://www.pref.iwate.jp/kensei/profile/1000649.html",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "岩手県\nhttps://www.pref.iwate.jp/kensei/profile/1000649.html\n[Webページの参考資料]\n岩手県の面積は15,275.04平方キロメートルです。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 16032.096899999997,
+              "firstTokenMs": 12043.053699999997,
+              "loadMs": 17.1248,
+              "promptMs": 12006.958,
+              "generationMs": 3988.974,
+              "promptTokens": 729,
+              "outputTokens": 50
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "秋田県: 11,637平方キロメートル  \n岩手県: 15,275.04平方キロメートル\n\n岩手県の面積の方が大きいです。\n\n参照元:\nhttps://common3.pref.akita.lg.jp/kigyo-rich/merit/\nhttps://www.pref.iwate.jp/kensei/profile/1000649.html"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "unfamiliar-comparison",
+      "trial": 1,
+      "ok": true,
+      "ms": 17777.44320000001,
+      "inputs": [
+        "青葉市と白波市の面積を比べてください"
+      ],
+      "answers": [
+        "青葉市\n\n青葉市の面積: 1,234.5平方キロメートル  \n白波市の面積: 2,345.6平方キロメートル  \n\n白波市の面積が大きいです。\n\n参照元:\nhttps://example.com/aoba\nhttps://example.com/shiranami"
+      ],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "青葉市 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 青葉市の概要\nURL: https://example.com/aoba\n抜粋: これは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/aoba",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "青葉市\nhttps://example.com/aoba\n[Webページの参考資料]\nこれは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "白波市 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 白波市の概要\nURL: https://example.com/shiranami\n抜粋: これは架空の市の検査用資料です。白波市の面積は2,345.6平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/shiranami",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "白波市\nhttps://example.com/shiranami\n[Webページの参考資料]\nこれは架空の市の検査用資料です。白波市の面積は2,345.6平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 17774.764499999997,
+              "firstTokenMs": 13018.323100000001,
+              "loadMs": 16.7928,
+              "promptMs": 12984.64,
+              "generationMs": 4755.864,
+              "promptTokens": 760,
+              "outputTokens": 56
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "青葉市\n\n青葉市の面積: 1,234.5平方キロメートル  \n白波市の面積: 2,345.6平方キロメートル  \n\n白波市の面積が大きいです。\n\n参照元:\nhttps://example.com/aoba\nhttps://example.com/shiranami"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "unfamiliar-comparison",
+      "trial": 2,
+      "ok": false,
+      "ms": 4321.284,
+      "error": "The input did not match the regular expression /白波市[^。\\n]{0,30}(?:広い|大きい)/. Input:\n\n'白波市\\n' +\n  '\\n' +\n  '青葉市の面積: 1,234.5平方キロメートル  \\n' +\n  '白波市の面積: 2,345.6平方キロメートル  \\n' +\n  '\\n' +\n  '白波市\\n' +\n  '\\n' +\n  '参照元:\\n' +\n  'https://example.com/aoba\\n' +\n  'https://example.com/shiranami'\n",
+      "inputs": [
+        "青葉市と白波市の面積を比べてください"
+      ],
+      "answers": [
+        "白波市\n\n青葉市の面積: 1,234.5平方キロメートル  \n白波市の面積: 2,345.6平方キロメートル  \n\n白波市\n\n参照元:\nhttps://example.com/aoba\nhttps://example.com/shiranami"
+      ],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "青葉市 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 青葉市の概要\nURL: https://example.com/aoba\n抜粋: これは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/aoba",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "青葉市\nhttps://example.com/aoba\n[Webページの参考資料]\nこれは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "白波市 面積 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 白波市の概要\nURL: https://example.com/shiranami\n抜粋: これは架空の市の検査用資料です。白波市の面積は2,345.6平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/shiranami",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "白波市\nhttps://example.com/shiranami\n[Webページの参考資料]\nこれは架空の市の検査用資料です。白波市の面積は2,345.6平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 4318.612000000008,
+              "firstTokenMs": 117.4039000000048,
+              "loadMs": 17.3453,
+              "promptMs": 83.964,
+              "generationMs": 4200.754,
+              "promptTokens": 760,
+              "outputTokens": 50
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "白波市\n\n青葉市の面積: 1,234.5平方キロメートル  \n白波市の面積: 2,345.6平方キロメートル  \n\n白波市\n\n参照元:\nhttps://example.com/aoba\nhttps://example.com/shiranami"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "missing-fact",
+      "trial": 1,
+      "ok": true,
+      "ms": 7543.219100000002,
+      "inputs": [
+        "青葉市の人口は何人ですか？"
+      ],
+      "answers": [
+        "確認できませんでした [出典](https://example.com/aoba)"
+      ],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "青葉市 人口 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 青葉市の概要\nURL: https://example.com/aoba\n抜粋: これは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/aoba",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "青葉市\nhttps://example.com/aoba\n[Webページの参考資料]\nこれは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 7540.546900000001,
+              "firstTokenMs": 6379.095499999996,
+              "loadMs": 14.6596,
+              "promptMs": 6335.22,
+              "generationMs": 1160.869,
+              "promptTokens": 488,
+              "outputTokens": 15
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "確認できませんでした [出典](https://example.com/aoba)"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "missing-fact",
+      "trial": 2,
+      "ok": true,
+      "ms": 449.328600000008,
+      "inputs": [
+        "青葉市の人口は何人ですか？"
+      ],
+      "answers": [
+        "確認できませんでした。\n\n参照元:\nhttps://example.com/aoba"
+      ],
+      "traces": [
+        [
+          {
+            "type": "notice",
+            "message": "確かな情報を確認するため、ネットで調べます。"
+          },
+          {
+            "type": "tool_start",
+            "name": "web_search",
+            "args": {
+              "query": "青葉市 人口 公式"
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_search",
+            "result": "1. 青葉市の概要\nURL: https://example.com/aoba\n抜粋: これは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "tool_start",
+            "name": "web_fetch",
+            "args": {
+              "url": "https://example.com/aoba",
+              "max_chars": 6000
+            }
+          },
+          {
+            "type": "tool_end",
+            "name": "web_fetch",
+            "result": "青葉市\nhttps://example.com/aoba\n[Webページの参考資料]\nこれは架空の市の検査用資料です。青葉市の面積は1,234.5平方キロメートルです。人口は掲載していません。",
+            "ok": true
+          },
+          {
+            "type": "model_stats",
+            "stats": {
+              "elapsedMs": 447.08310000000347,
+              "firstTokenMs": 116.56380000000354,
+              "loadMs": 17.1149,
+              "promptMs": 84.785,
+              "generationMs": 330.696,
+              "promptTokens": 488,
+              "outputTokens": 5
+            }
+          },
+          {
+            "type": "assistant",
+            "text": "確認できませんでした。\n\n参照元:\nhttps://example.com/aoba"
+          },
+          {
+            "type": "done",
+            "reason": "answered"
+          }
+        ]
+      ]
+    }
+  ]
+}

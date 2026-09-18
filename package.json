@@ -1,0 +1,24 @@
+{
+  "name": "origin-agent",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "差し替え可能な頭脳を持つ、自作コーディングエージェント",
+  "scripts": {
+    "start": "node src/cli.ts",
+    "practice": "node src/cli.ts --mode code --root examples/json-practice",
+    "test": "node --test test/*.test.ts",
+    "check:live": "node scripts/check-live.ts",
+    "check:research": "node scripts/check-research.ts",
+    "check:code": "node scripts/check-code.ts",
+    "check:growth": "node scripts/check-growth.ts",
+    "eval": "node scripts/eval.ts",
+    "eval:route": "node scripts/eval-route.ts",
+    "bench:response": "node scripts/bench-response.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  }
+}

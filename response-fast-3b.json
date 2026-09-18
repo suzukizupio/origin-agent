@@ -1,0 +1,107 @@
+{
+  "startedAt": "2026-09-16T22:56:59.071Z",
+  "provider": "ollama:qwen2.5-coder:3b",
+  "buffered": false,
+  "repeat": 2,
+  "promptChars": 813,
+  "meanFirstTextMs": 1591,
+  "meanElapsedMs": 4121,
+  "results": [
+    {
+      "round": 1,
+      "question": "こんにちは。ひとことで挨拶してください。",
+      "firstTextMs": 7553,
+      "elapsedMs": 7688,
+      "answer": "こんにちは！",
+      "stats": {
+        "elapsedMs": 7687.5104,
+        "firstTokenMs": 7552.5042,
+        "loadMs": 9.1402,
+        "promptMs": 7466.038,
+        "generationMs": 136.445,
+        "promptTokens": 507,
+        "outputTokens": 3
+      }
+    },
+    {
+      "round": 1,
+      "question": "JavaScriptの変数を、初心者向けに2文で説明してください。",
+      "firstTextMs": 448,
+      "elapsedMs": 9694,
+      "answer": "JavaScriptの変数とは、プログラム内でデータを保存するための名前付き領域です。最初は、`var`, `let`, `const` というキーワードを使って宣言します。\n\n- `var`: 変数が関数スコープで存在し、再代入可能ですが、ブロックスコープでは使用できません。\n- `let` and `const`: ブロックスコープ内で使用できます。`let`は再代入可能です whereas `const`は再代入不可です。\n\nこれらの変数を使用することで、プログラムのデータを管理し、操作することができます。",
+      "stats": {
+        "elapsedMs": 9693.8623,
+        "firstTokenMs": 448.14799999999923,
+        "loadMs": 7.8801,
+        "promptMs": 428.044,
+        "generationMs": 9245.758,
+        "promptTokens": 517,
+        "outputTokens": 128
+      }
+    },
+    {
+      "round": 1,
+      "question": "私の名前はハルです。短く挨拶してください。",
+      "firstTextMs": 385,
+      "elapsedMs": 847,
+      "answer": "こんにちは、ハルです。",
+      "stats": {
+        "elapsedMs": 846.9135000000024,
+        "firstTokenMs": 384.83790000000226,
+        "loadMs": 5.8076,
+        "promptMs": 359.802,
+        "generationMs": 462.875,
+        "promptTokens": 513,
+        "outputTokens": 7
+      }
+    },
+    {
+      "round": 2,
+      "question": "こんにちは。ひとことで挨拶してください。",
+      "firstTextMs": 300,
+      "elapsedMs": 448,
+      "answer": "こんにちは！",
+      "stats": {
+        "elapsedMs": 447.70750000000044,
+        "firstTokenMs": 300.0427000000018,
+        "loadMs": 10.7288,
+        "promptMs": 277.902,
+        "generationMs": 147.426,
+        "promptTokens": 507,
+        "outputTokens": 3
+      }
+    },
+    {
+      "round": 2,
+      "question": "JavaScriptの変数を、初心者向けに2文で説明してください。",
+      "firstTextMs": 482,
+      "elapsedMs": 5315,
+      "answer": "JavaScriptの変数とは、プログラム内でデータを保存するための名前付き領域です。最初は「var」を使用して宣言しますが、現在では「let」と「const」を使用するのが一般的です。「let」は再代入可能ですが、「const」は一度定義した値は変更できません。",
+      "stats": {
+        "elapsedMs": 5315.1947,
+        "firstTokenMs": 481.79079999999885,
+        "loadMs": 8.5936,
+        "promptMs": 455.471,
+        "generationMs": 4833.402,
+        "promptTokens": 517,
+        "outputTokens": 68
+      }
+    },
+    {
+      "round": 2,
+      "question": "私の名前はハルです。短く挨拶してください。",
+      "firstTextMs": 376,
+      "elapsedMs": 731,
+      "answer": "こんにちは、ハル！",
+      "stats": {
+        "elapsedMs": 731.2196999999978,
+        "firstTokenMs": 376.3089,
+        "loadMs": 8.5526,
+        "promptMs": 356.511,
+        "generationMs": 354.737,
+        "promptTokens": 513,
+        "outputTokens": 6
+      }
+    }
+  ]
+}

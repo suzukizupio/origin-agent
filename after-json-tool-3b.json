@@ -1,0 +1,375 @@
+{
+  "startedAt": "2026-09-16T15:17:03.952Z",
+  "completed": true,
+  "provider": "ollama:qwen2.5-coder:3b",
+  "repeat": 3,
+  "timeoutSec": 300,
+  "passed": 3,
+  "total": 6,
+  "tasks": [
+    {
+      "id": "add-field",
+      "title": "既存を壊さずに項目を足す",
+      "passed": 2,
+      "total": 3,
+      "meanMs": 38910,
+      "failures": [
+        "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  {\n+   language: '\"ja\"',\n-   language: 'ja',\n    theme: 'dark'\n  }\n"
+      ],
+      "tools": [
+        "list_files",
+        "search",
+        "read_file",
+        "edit_json",
+        "edit_file",
+        "replace_lines"
+      ],
+      "attempts": [
+        {
+          "ok": true,
+          "ms": 40207,
+          "trace": [
+            {
+              "input": "settings.json に \"language\": \"ja\" を追加してください。既存の設定は残してください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "settings.json",
+                    "key": "language",
+                    "value": "ja"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "settings.json の \"language\" を \"ja\" にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了です。何か他が必要ですか？"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "ms": 38121,
+          "trace": [
+            {
+              "input": "settings.json に \"language\": \"ja\" を追加してください。既存の設定は残してください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "settings.json",
+                    "key": "language",
+                    "value": "ja"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "settings.json の \"language\" を \"ja\" にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "OK, 詳細な操作が必要ですか？"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": false,
+          "ms": 38403,
+          "reason": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  {\n+   language: '\"ja\"',\n-   language: 'ja',\n    theme: 'dark'\n  }\n",
+          "trace": [
+            {
+              "input": "settings.json に \"language\": \"ja\" を追加してください。既存の設定は残してください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_json",
+                  "args": {
+                    "path": "settings.json",
+                    "key": "language",
+                    "value": "\"ja\""
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_json",
+                  "result": "settings.json の \"language\" を \"\\\"ja\\\"\" にしました。他のキーは保持しました。read_file で確認してください。",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了しました。必要な操作があればお知らせください。"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preserve-rest",
+      "title": "長いファイルの1行だけを変える",
+      "passed": 1,
+      "total": 3,
+      "meanMs": 69545,
+      "failures": [
+        "TIMEOUT_MS が変わっていること",
+        "TIMEOUT_MS が変わっていること"
+      ],
+      "tools": [
+        "list_files",
+        "search",
+        "read_file",
+        "edit_json",
+        "edit_file",
+        "replace_lines"
+      ],
+      "attempts": [
+        {
+          "ok": false,
+          "ms": 74016,
+          "reason": "TIMEOUT_MS が変わっていること",
+          "trace": [
+            {
+              "input": "src/limits.ts の TIMEOUT_MS を 20_000 から 30_000 に変更してください。他の行は一切変えないでください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "TIMEOUT_MS: 20_000",
+                    "new_string": "TIMEOUT_MS: 30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "エラー: old_string がファイル内に見つかりません。\nread_file で現在の内容を確認し、空白や改行まで正確に引用してください。\n行頭の行番号とタブ（read_file が付けたもの）は含めないこと。\nファイル内の引用符を落としていないか確認してください。一意な短い部分だけを old_string にする方法もあります。\nどこを直すか分からない場合は、先に search で該当箇所を探してください。",
+                  "ok": false
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "src/limits.ts"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t// 各種の上限値。\n    2\texport const MAX_RETRY = 3;\n    3\texport const TIMEOUT_MS = 20_000;\n    4\texport const MAX_FILE_BYTES = 1_000_000;\n    5\texport const MAX_LINE_LENGTH = 200;\n    6\texport const PREVIEW_LINES = 6;\n    7\t\n    8\texport function describe(): string {\n    9\t  return `retry=${MAX_RETRY} timeout=${TIMEOUT_MS}`;\n   10\t}\n   11\t",
+                  "ok": true
+                },
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "TIMEOUT_MS: 20_000",
+                    "new_string": "TIMEOUT_MS: 30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "エラー: old_string がファイル内に見つかりません。\nread_file で現在の内容を確認し、空白や改行まで正確に引用してください。\n行頭の行番号とタブ（read_file が付けたもの）は含めないこと。\nファイル内の引用符を落としていないか確認してください。一意な短い部分だけを old_string にする方法もあります。\nどこを直すか分からない場合は、先に search で該当箇所を探してください。",
+                  "ok": false
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "src/limits.ts"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t// 各種の上限値。\n    2\texport const MAX_RETRY = 3;\n    3\texport const TIMEOUT_MS = 20_000;\n    4\texport const MAX_FILE_BYTES = 1_000_000;\n    5\texport const MAX_LINE_LENGTH = 200;\n    6\texport const PREVIEW_LINES = 6;\n    7\t\n    8\texport function describe(): string {\n    9\t  return `retry=${MAX_RETRY} timeout=${TIMEOUT_MS}`;\n   10\t}\n   11\t",
+                  "ok": true
+                },
+                {
+                  "type": "notice",
+                  "message": "edit_file を同じ引数で 3 回呼ぼうとしたので中断しました。頭脳が行き詰まっています。"
+                },
+                {
+                  "type": "done",
+                  "reason": "stuck"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": false,
+          "ms": 73646,
+          "reason": "TIMEOUT_MS が変わっていること",
+          "trace": [
+            {
+              "input": "src/limits.ts の TIMEOUT_MS を 20_000 から 30_000 に変更してください。他の行は一切変えないでください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "TIMEOUT_MS: 20_000",
+                    "new_string": "TIMEOUT_MS: 30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "エラー: old_string がファイル内に見つかりません。\nread_file で現在の内容を確認し、空白や改行まで正確に引用してください。\n行頭の行番号とタブ（read_file が付けたもの）は含めないこと。\nファイル内の引用符を落としていないか確認してください。一意な短い部分だけを old_string にする方法もあります。\nどこを直すか分からない場合は、先に search で該当箇所を探してください。",
+                  "ok": false
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "src/limits.ts"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t// 各種の上限値。\n    2\texport const MAX_RETRY = 3;\n    3\texport const TIMEOUT_MS = 20_000;\n    4\texport const MAX_FILE_BYTES = 1_000_000;\n    5\texport const MAX_LINE_LENGTH = 200;\n    6\texport const PREVIEW_LINES = 6;\n    7\t\n    8\texport function describe(): string {\n    9\t  return `retry=${MAX_RETRY} timeout=${TIMEOUT_MS}`;\n   10\t}\n   11\t",
+                  "ok": true
+                },
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "TIMEOUT_MS: 20_000",
+                    "new_string": "TIMEOUT_MS: 30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "エラー: old_string がファイル内に見つかりません。\nread_file で現在の内容を確認し、空白や改行まで正確に引用してください。\n行頭の行番号とタブ（read_file が付けたもの）は含めないこと。\nファイル内の引用符を落としていないか確認してください。一意な短い部分だけを old_string にする方法もあります。\nどこを直すか分からない場合は、先に search で該当箇所を探してください。",
+                  "ok": false
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "src/limits.ts"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t// 各種の上限値。\n    2\texport const MAX_RETRY = 3;\n    3\texport const TIMEOUT_MS = 20_000;\n    4\texport const MAX_FILE_BYTES = 1_000_000;\n    5\texport const MAX_LINE_LENGTH = 200;\n    6\texport const PREVIEW_LINES = 6;\n    7\t\n    8\texport function describe(): string {\n    9\t  return `retry=${MAX_RETRY} timeout=${TIMEOUT_MS}`;\n   10\t}\n   11\t",
+                  "ok": true
+                },
+                {
+                  "type": "notice",
+                  "message": "edit_file を同じ引数で 3 回呼ぼうとしたので中断しました。頭脳が行き詰まっています。"
+                },
+                {
+                  "type": "done",
+                  "reason": "stuck"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "ms": 60974,
+          "trace": [
+            {
+              "input": "src/limits.ts の TIMEOUT_MS を 20_000 から 30_000 に変更してください。他の行は一切変えないでください。",
+              "restart": false,
+              "events": [
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "TIMEOUT_MS: 20_000",
+                    "new_string": "TIMEOUT_MS: 30_000"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "エラー: old_string がファイル内に見つかりません。\nread_file で現在の内容を確認し、空白や改行まで正確に引用してください。\n行頭の行番号とタブ（read_file が付けたもの）は含めないこと。\nファイル内の引用符を落としていないか確認してください。一意な短い部分だけを old_string にする方法もあります。\nどこを直すか分からない場合は、先に search で該当箇所を探してください。",
+                  "ok": false
+                },
+                {
+                  "type": "tool_start",
+                  "name": "read_file",
+                  "args": {
+                    "path": "src/limits.ts"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "read_file",
+                  "result": "    1\t// 各種の上限値。\n    2\texport const MAX_RETRY = 3;\n    3\texport const TIMEOUT_MS = 20_000;\n    4\texport const MAX_FILE_BYTES = 1_000_000;\n    5\texport const MAX_LINE_LENGTH = 200;\n    6\texport const PREVIEW_LINES = 6;\n    7\t\n    8\texport function describe(): string {\n    9\t  return `retry=${MAX_RETRY} timeout=${TIMEOUT_MS}`;\n   10\t}\n   11\t",
+                  "ok": true
+                },
+                {
+                  "type": "tool_start",
+                  "name": "edit_file",
+                  "args": {
+                    "path": "src/limits.ts",
+                    "old_string": "export const TIMEOUT_MS = 20_000;",
+                    "new_string": "export const TIMEOUT_MS = 30_000;"
+                  }
+                },
+                {
+                  "type": "tool_end",
+                  "name": "edit_file",
+                  "result": "src/limits.ts の 1 箇所を置換しました（行数は変わりません）。",
+                  "ok": true
+                },
+                {
+                  "type": "assistant",
+                  "text": "完了！TIMEOUT_MS を 30_000 に変更しました。他の行は一切変えませんでした。"
+                },
+                {
+                  "type": "done",
+                  "reason": "answered"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

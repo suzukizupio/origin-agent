@@ -1,0 +1,36 @@
+{
+  "startedAt": "2026-09-16T09:13:54.701Z",
+  "provider": "ollama:qwen2.5-coder:3b",
+  "repeat": 5,
+  "timeoutSec": 300,
+  "passed": 2,
+  "total": 10,
+  "tasks": [
+    {
+      "id": "add-field",
+      "title": "既存を壊さずに項目を足す",
+      "passed": 1,
+      "total": 5,
+      "meanMs": 65838,
+      "failures": [
+        "Expected values to be strictly deep-equal: + actual - expected { language: 'ja', - theme: 'dark' }",
+        "Expected double-quoted property name in JSON at position 22 (line 3 column 1)",
+        "Expected values to be strictly deep-equal: + actual - expected { language: 'ja', - theme: 'dark' }",
+        "Expected values to be strictly deep-equal: + actual - expected { - language: 'ja', theme: 'dark' }"
+      ]
+    },
+    {
+      "id": "preserve-rest",
+      "title": "長いファイルの1行だけを変える",
+      "passed": 1,
+      "total": 5,
+      "meanMs": 71937,
+      "failures": [
+        "TIMEOUT_MS が変わっていること",
+        "TIMEOUT_MS が変わっていること",
+        "TIMEOUT_MS が変わっていること",
+        "TIMEOUT_MS が変わっていること"
+      ]
+    }
+  ]
+}
