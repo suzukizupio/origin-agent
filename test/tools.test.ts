@@ -174,6 +174,95 @@ test("edit_file: 見つからない old_string は失敗する", async () => {
   }
 });
 
+test("edit_file: 複数行を1行に詰めた old_string でも、空白を無視して1箇所なら置換する", async () => {
+  const fx = await fixture();
+  try {
+    const source = "export function isAdult(age) {\n  return age > 18;\n}\n\nexport function other() {\n  return 1;\n}\n";
+    await writeFile(join(fx.root, "age.js"), source, "utf8");
+    const result = await editFileTool.run(
+      { path: "age.js", old_string: "isAdult(age) { return age > 18; }", new_string: "isAdult(age) { return age >= 18; }" },
+      fx.ctx,
+    );
+    assert.match(result, /1〜3 行目/);
+    const after = await readFile(join(fx.root, "age.js"), "utf8");
+    assert.equal(after, "export function isAdult(age) { return age >= 18; }\n\nexport function other() {\n  return 1;\n}\n");
+  } finally {
+    await fx.dispose();
+  }
+});
+
+test("edit_file: 空白を無視した一致でも、インデントを二重にしない", async () => {
+  const fx = await fixture();
+  try {
+    await writeFile(join(fx.root, "b.js"), "function f() {\n    return a+b;\n}\n", "utf8");
+    // 行頭の空白の数も、演算子の前後の空白も実物と違う
+    await editFileTool.run({ path: "b.js", old_string: "  return a + b;", new_string: "  return a * b;" }, fx.ctx);
+    assert.equal(await readFile(join(fx.root, "b.js"), "utf8"), "function f() {\n    return a * b;\n}\n");
+  } finally {
+    await fx.dispose();
+  }
+});
+
+test("edit_file: 空白を無視した一致で既存の定義が消えるなら、置換しない", async () => {
+  const fx = await fixture();
+  try {
+    const source = "export function add(a, b) {\n  return a + b;\n}\n";
+    await writeFile(join(fx.root, "math.js"), source, "utf8");
+    // 「multiply を足して」と頼まれた 3B が実際に出した呼び出し
+    await assert.rejects(
+      () => editFileTool.run({
+        path: "math.js",
+        old_string: "export function add(a, b) { return a + b; }",
+        new_string: "export function multiply(a, b) { return a * b; }",
+      }, fx.ctx),
+      /add の定義が消える.*old_string を空にすると/,
+    );
+    assert.equal(await readFile(join(fx.root, "math.js"), "utf8"), source);
+  } finally {
+    await fx.dispose();
+  }
+});
+
+test("edit_file: old_string が空なら、new_string をファイル末尾に追加する", async () => {
+  const fx = await fixture();
+  try {
+    await writeFile(join(fx.root, "math.js"), "export function add(a, b) {\n  return a + b;\n}\n", "utf8");
+    const result = await editFileTool.run(
+      { path: "math.js", old_string: "", new_string: "\nexport function multiply(a, b) { return a * b; }" },
+      fx.ctx,
+    );
+    assert.match(result, /末尾に追加/);
+    assert.equal(
+      await readFile(join(fx.root, "math.js"), "utf8"),
+      "export function add(a, b) {\n  return a + b;\n}\n\nexport function multiply(a, b) { return a * b; }\n",
+    );
+
+    // 末尾に改行がないファイルでも、既存の最終行とつながらない
+    await writeFile(join(fx.root, "x.js"), "const a = 1;", "utf8");
+    await editFileTool.run({ path: "x.js", old_string: "", new_string: "const b = 2;" }, fx.ctx);
+    assert.equal(await readFile(join(fx.root, "x.js"), "utf8"), "const a = 1;\nconst b = 2;\n");
+
+    await assert.rejects(() => editFileTool.run({ path: "x.js", old_string: "", new_string: "  " }, fx.ctx), /両方とも空/);
+  } finally {
+    await fx.dispose();
+  }
+});
+
+test("edit_file: 空白を無視すると複数に一致するなら、置換せず行番号を示す", async () => {
+  const fx = await fixture();
+  try {
+    const source = "if (a) {\n  x = 1;\n}\nif (b) {\n  x = 1;\n}\n";
+    await writeFile(join(fx.root, "c.js"), source, "utf8");
+    await assert.rejects(
+      () => editFileTool.run({ path: "c.js", old_string: "x=1;", new_string: "x = 2;" }, fx.ctx),
+      /2 箇所に一致.*2 行目、5 行目/,
+    );
+    assert.equal(await readFile(join(fx.root, "c.js"), "utf8"), source);
+  } finally {
+    await fx.dispose();
+  }
+});
+
 test("edit_file: new_string の $& を特殊置換として解釈しない", async () => {
   const fx = await fixture();
   try {

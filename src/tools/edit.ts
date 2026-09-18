@@ -5,11 +5,15 @@
 //   2. 出力トークンが桁で減る。小さいモデルほどこの差が効く
 //   3. old_string を正確に引用させることで、実物を読まずに編集する事故を防げる
 // 「一意に一致しなければ失敗」という厳しさが、そのまま安全装置になっている。
+//
+// v0.7 で小さいモデル向けの受け止め方を2つ足した（ツールの説明文は変えていない）:
+//   - 厳密一致しないとき、空白と改行を無視して1箇所に絞れれば置換する。ただし既存の定義を消す置換は通さない
+//   - old_string が空なら、new_string をファイル末尾に追加する
 
 import { writeFile } from "node:fs/promises";
 import { safePath, show } from "./paths.ts";
 import { readTextFile } from "./fs.ts";
-import type { Tool } from "../types.ts";
+import type { Tool, ToolContext } from "../types.ts";
 
 const PREVIEW_LINES = 6;
 
@@ -93,6 +97,79 @@ export const replaceLinesTool: Tool = {
   },
 };
 
+type Span = { start: number; end: number };
+
+/**
+ * 空白と改行を無視して old_string を探す。見つかった範囲は、ファイル側の
+ * 最初と最後の非空白文字で区切る（前後のインデントや改行は含めない）。
+ *
+ * 実測: 3B は複数行の関数を1行に詰めて引用する。
+ *   ファイル:   isAdult(age) {\n  return age > 18;\n}
+ *   old_string: isAdult(age) { return age > 18; }
+ * 意図は明らかなのに厳密一致で落ち、同じ引数で再試行して行き詰まった。
+ */
+function findIgnoringWhitespace(text: string, needle: string): Span[] {
+  const compactNeedle = needle.replace(/\s+/g, "");
+  if (compactNeedle === "") return [];
+  // 空白を除いた文字列と、その各文字が元のどこにあったか
+  const positions: number[] = [];
+  let compact = "";
+  for (let i = 0; i < text.length; i++) {
+    if (/\s/.test(text[i]!)) continue;
+    compact += text[i];
+    positions.push(i);
+  }
+  const spans: Span[] = [];
+  for (let at = compact.indexOf(compactNeedle); at >= 0; at = compact.indexOf(compactNeedle, at + 1)) {
+    spans.push({ start: positions[at]!, end: positions[at + compactNeedle.length - 1]! + 1 });
+  }
+  return spans;
+}
+
+function lineOf(text: string, index: number): number {
+  return text.slice(0, index).split("\n").length;
+}
+
+const DEFINITION = /\b(?:function\s*\*?\s*|class\s+|(?:const|let|var)\s+)([A-Za-z_$][\w$]*)/g;
+
+/** 関数・クラス・変数として定義されている名前（JavaScript / TypeScript の書き方） */
+function definedNames(text: string): Set<string> {
+  return new Set([...text.matchAll(DEFINITION)].map((match) => match[1]!));
+}
+
+/**
+ * old_string が空のときは、new_string をファイル末尾に足す。
+ *
+ * 実測: 関数を足してと頼まれた 3B は、3回中3回とも old_string を空にして追加しようとした。
+ * 以前は「置換専用で挿入はできません」と断っていたが、既存の行を引用し直す書き方には
+ * 一度も移れず、同じ呼び出しを繰り返して行き詰まった。意図は明らかなので、その形で受け止める。
+ */
+async function append(ctx: ToolContext, abs: string, addition: string): Promise<string> {
+  if (addition.trim() === "") {
+    throw new Error("old_string と new_string が両方とも空です。追加する内容を new_string に書いてください。");
+  }
+  const before = await readTextFile(ctx, abs);
+  const separator = before === "" || before.endsWith("\n") ? "" : "\n";
+  let after = before + separator + addition;
+  if (!after.endsWith("\n")) after += "\n";
+
+  const ok = await ctx.confirm(
+    [
+      `${show(ctx, abs)} の末尾に追加します（old_string が空のため）。`,
+      `  + ${preview(addition.replace(/^\n+/, ""))}`,
+      "よろしいですか？",
+    ].join("\n"),
+  );
+  if (!ok) return "ユーザーが編集を拒否しました。";
+
+  await writeFile(abs, after, "utf8");
+  return (
+    `old_string が空だったので、new_string を ${show(ctx, abs)} の末尾に追加しました` +
+    `（${before.split("\n").length} 行 → ${after.split("\n").length} 行）。` +
+    `ほかの場所に入れたかった場合は、その場所の既存の行を old_string にしてください。read_file で結果を確認してください。`
+  );
+}
+
 export const editFileTool: Tool = {
   name: "edit_file",
   description:
@@ -125,22 +202,10 @@ export const editFileTool: Tool = {
     if (typeof oldString !== "string") {
       throw new Error("old_string は必須の文字列です");
     }
-    if (oldString === "") {
-      // 空の old_string は「ここに挿入したい」の意思表示として出てくる。
-      // このツールは置換しかできないので、置換で追加する書き方を示す。
-      throw new Error(
-        [
-          "old_string が空です。edit_file は置換専用で、挿入はできません。",
-          "追加したいときは、追加する場所の既存の行を old_string にして、",
-          "new_string にその既存の行と新しい行の両方を書いてください。",
-          "old_string は read_file で見た通りの文字列にすること。",
-          "行番号で位置を指定したい場合は replace_lines を使ってください。",
-        ].join("\n"),
-      );
-    }
     if (typeof newString !== "string") {
       throw new Error("new_string は必須の文字列です");
     }
+    if (oldString === "") return await append(ctx, abs, newString);
     if (oldString === newString) {
       throw new Error("old_string と new_string が同じです");
     }
@@ -148,6 +213,55 @@ export const editFileTool: Tool = {
     const before = await readTextFile(ctx, abs);
     const parts = before.split(oldString);
     const hits = parts.length - 1;
+
+    // 厳密一致しないときだけ、空白と改行を無視して探す。1箇所に絞れたときに限り置換する
+    const loose = hits === 0 ? findIgnoringWhitespace(before, oldString) : [];
+    if (loose.length > 1) {
+      throw new Error(
+        `old_string が見つかりません。空白と改行を無視すると ${loose.length} 箇所に一致しました` +
+          `（${loose.map((span) => `${lineOf(before, span.start)} 行目`).join("、")}）。` +
+          `前後の行を含めて一意になるまで広げてください。`,
+      );
+    }
+    if (loose.length === 1) {
+      const span = loose[0]!;
+      // 見つかった範囲は前後の空白を含まない。old_string の前後にあった空白は
+      // new_string からも外し、インデントや改行が二重にならないようにする
+      const lead = oldString.match(/^\s*/)?.[0] ?? "";
+      const trail = oldString.match(/\s*$/)?.[0] ?? "";
+      let replacement = newString;
+      if (lead && replacement.startsWith(lead)) replacement = replacement.slice(lead.length);
+      if (trail && replacement.endsWith(trail)) replacement = replacement.slice(0, replacement.length - trail.length);
+      const after = before.slice(0, span.start) + replacement + before.slice(span.end);
+      const from = lineOf(before, span.start);
+      const to = lineOf(before, span.end);
+
+      // 推測で広げた一致なので、既存の定義を消す置換までは通さない。
+      // 実測: 関数を「足して」と頼まれた 3B が、add を丸ごと multiply に置き換えようとした。
+      const lost = [...definedNames(before.slice(span.start, span.end))].filter((name) => !definedNames(replacement).has(name));
+      if (lost.length > 0) {
+        throw new Error(
+          `空白と改行を無視すると ${from}〜${to} 行目に一致しましたが、この置換では ${lost.join("、")} の定義が消えるため、置換しませんでした。` +
+            `既存の定義を残すなら new_string にも含めてください。新しい関数を足すだけなら、old_string を空にするとファイル末尾に追加できます。`,
+        );
+      }
+
+      const ok = await ctx.confirm(
+        [
+          `${show(ctx, abs)} を編集します（空白と改行の違いを無視して一致した ${from}〜${to} 行目）。`,
+          `  - ${preview(before.slice(span.start, span.end))}`,
+          `  + ${preview(replacement)}`,
+          "よろしいですか？",
+        ].join("\n"),
+      );
+      if (!ok) return "ユーザーが編集を拒否しました。";
+
+      await writeFile(abs, after, "utf8");
+      return (
+        `old_string は空白や改行が実物と違いましたが、それを無視すると ${from}〜${to} 行目の1箇所に一致したので置換しました。` +
+        `read_file で結果を確認してください。`
+      );
+    }
 
     if (hits === 0) {
       // 小さいモデルの典型的な外し方を先回りして名指しする。
