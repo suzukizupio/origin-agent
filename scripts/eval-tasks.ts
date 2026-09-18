@@ -5,8 +5,10 @@
 // 使うほど評価セットが育つ。それがこのプロジェクトでの「学習」の現実的な形。
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { AgentEvent, AgentMode } from "../src/types.ts";
 
 export type Turn = {
@@ -35,6 +37,11 @@ export type Task = {
   maxSteps?: number;
   /** ネットに出る課題。--offline で除外する */
   network?: boolean;
+  /**
+   * 骨格を直している間は見ない課題。--holdout のときだけ走らせる。
+   * tune だけを見て直すと、採点の文面を覚えただけの改善になりやすい。
+   */
+  holdout?: boolean;
   setup?: (root: string) => Promise<void>;
   turns: Turn[];
   check: (result: TaskResult) => Promise<void> | void;
@@ -42,12 +49,252 @@ export type Task = {
 
 const EDIT_TOOLS = ["list_files", "search", "read_file", "edit_json", "edit_file", "replace_lines"];
 const READ_TOOLS = ["list_files", "search", "read_file"];
+const CODE_TOOLS = [...EDIT_TOOLS, "run_shell"];
 
 async function put(root: string, relativePath: string, contents: string): Promise<void> {
   const target = join(root, relativePath);
   await mkdir(join(target, ".."), { recursive: true });
   await writeFile(target, contents, "utf8");
 }
+
+const PACKAGE_JSON = '{\n  "type": "module",\n  "scripts": { "test": "node --test" }\n}\n';
+
+/** 作業ルートでテストを走らせる。採点側が自分で確かめ、モデルの「通りました」は信じない */
+function runTests(root: string): { ok: boolean; output: string } {
+  const result = spawnSync(process.execPath, ["--test"], { cwd: root, encoding: "utf8", timeout: 60_000, windowsHide: true });
+  return { ok: result.status === 0, output: `${result.stdout ?? ""}${result.stderr ?? ""}` };
+}
+
+/** 編集後のモジュールを読み込む。構文を壊していればここで落ちる */
+async function load(root: string, relativePath: string): Promise<Record<string, unknown>> {
+  return await import(pathToFileURL(join(root, relativePath)).href) as Record<string, unknown>;
+}
+
+function fn(module: Record<string, unknown>, name: string): (...args: unknown[]) => unknown {
+  const value = module[name];
+  assert.equal(typeof value, "function", `${name} が export された関数であること`);
+  return value as (...args: unknown[]) => unknown;
+}
+
+/** 落ちるテストを直す課題の共通の採点。テストファイルを書き換えて通すのは不正解 */
+async function checkFixedTests(result: TaskResult, testPath: string, testSource: string): Promise<void> {
+  assert.equal(await result.read(testPath), testSource, "テストファイルを変更していないこと");
+  const run = runTests(result.root);
+  assert.ok(run.ok, `テストが通ること:\n${run.output.slice(-400)}`);
+}
+
+// ここから下の「コードを直す」課題は v0.7 で追加した。設定値の変更より一段むずかしい、
+// 実際のコーディングに近い作業（テストを走らせる・原因を探す・関数を足す）を見る。
+// holdout の3件は tune の3件と同じ種類で、ファイル・関数・言い回しだけを変えてある。
+
+const CART_TEST = [
+  'import { test } from "node:test";',
+  'import assert from "node:assert/strict";',
+  'import { total } from "../src/cart.js";',
+  "",
+  'test("合計金額", () => {',
+  "  assert.equal(total([{ price: 100, qty: 2 }, { price: 50, qty: 1 }]), 250);",
+  "});",
+  "",
+  'test("空のカートは0円", () => {',
+  "  assert.equal(total([]), 0);",
+  "});",
+  "",
+].join("\n");
+
+const STATS_TEST = [
+  'import { test } from "node:test";',
+  'import assert from "node:assert/strict";',
+  'import { average, max } from "../src/stats.js";',
+  "",
+  'test("平均", () => {',
+  "  assert.equal(average([2, 4, 6]), 4);",
+  "  assert.equal(average([]), 0);",
+  "});",
+  "",
+  'test("最大値", () => {',
+  "  assert.equal(max([1, 5, 3]), 5);",
+  "});",
+  "",
+].join("\n");
+
+const codeTasks: Task[] = [
+  {
+    id: "fix-failing-test",
+    title: "落ちているテストを走らせ、原因のコードを直す",
+    mode: "code",
+    via: "agent",
+    tools: CODE_TOOLS,
+    maxSteps: 10,
+    setup: async (root) => {
+      await put(root, "package.json", PACKAGE_JSON);
+      await put(root, "src/cart.js", [
+        "export function total(items) {",
+        "  let sum = 0;",
+        "  for (let i = 1; i < items.length; i++) {",
+        "    sum += items[i].price * items[i].qty;",
+        "  }",
+        "  return sum;",
+        "}",
+        "",
+      ].join("\n"));
+      await put(root, "test/cart.test.js", CART_TEST);
+    },
+    turns: [{ text: "npm test が失敗しています。原因を調べて src のコードを直し、テストが通ることを確認してください。テストファイルは変更しないでください。" }],
+    check: async (result) => {
+      await checkFixedTests(result, "test/cart.test.js", CART_TEST);
+      const total = fn(await load(result.root, "src/cart.js"), "total");
+      // テストに合わせて値を埋め込んだだけの修正を見分ける
+      assert.equal(total([{ price: 10, qty: 3 }]), 30, "テスト以外の入力でも正しいこと");
+    },
+  },
+  {
+    id: "fix-described-bug",
+    title: "説明されたバグを直し、隣の関数を残す",
+    mode: "code",
+    via: "agent",
+    tools: CODE_TOOLS,
+    maxSteps: 8,
+    setup: async (root) => {
+      await put(root, "package.json", PACKAGE_JSON);
+      await put(root, "src/age.js", [
+        "export function isAdult(age) {",
+        "  return age > 18;",
+        "}",
+        "",
+        "export function ageGroup(age) {",
+        '  if (age < 13) return "child";',
+        '  if (age < 20) return "teen";',
+        '  return "adult";',
+        "}",
+        "",
+      ].join("\n"));
+    },
+    turns: [{ text: "src/age.js の isAdult(18) が false になります。18歳以上なら true を返すように直してください。" }],
+    check: async ({ root }) => {
+      const module = await load(root, "src/age.js");
+      const isAdult = fn(module, "isAdult");
+      const ageGroup = fn(module, "ageGroup");
+      assert.equal(isAdult(18), true, "isAdult(18) が true");
+      assert.equal(isAdult(17), false, "isAdult(17) が false");
+      assert.equal(isAdult(40), true, "isAdult(40) が true");
+      assert.deepEqual([ageGroup(10), ageGroup(15), ageGroup(30)], ["child", "teen", "adult"], "ageGroup が変わっていないこと");
+    },
+  },
+  {
+    id: "add-function",
+    title: "既存の関数を残して、新しい関数を足す",
+    mode: "code",
+    via: "agent",
+    tools: CODE_TOOLS,
+    maxSteps: 8,
+    setup: async (root) => {
+      await put(root, "package.json", PACKAGE_JSON);
+      await put(root, "src/math.js", [
+        "export function add(a, b) {",
+        "  return a + b;",
+        "}",
+        "",
+        "export function subtract(a, b) {",
+        "  return a - b;",
+        "}",
+        "",
+      ].join("\n"));
+    },
+    turns: [{ text: "src/math.js に、2つの数の積を返す multiply(a, b) を追加して export してください。既存の関数はそのまま残してください。" }],
+    check: async ({ root }) => {
+      const module = await load(root, "src/math.js");
+      assert.equal(fn(module, "multiply")(3, 4), 12);
+      assert.equal(fn(module, "multiply")(-2, 5), -10);
+      assert.equal(fn(module, "add")(1, 2), 3, "add が残っていること");
+      assert.equal(fn(module, "subtract")(5, 2), 3, "subtract が残っていること");
+    },
+  },
+  {
+    id: "holdout-fix-failing-test",
+    title: "（holdout）落ちているテストの原因を直す",
+    mode: "code",
+    via: "agent",
+    tools: CODE_TOOLS,
+    maxSteps: 10,
+    holdout: true,
+    setup: async (root) => {
+      await put(root, "package.json", PACKAGE_JSON);
+      await put(root, "src/stats.js", [
+        "export function average(values) {",
+        "  if (values.length === 0) return 0;",
+        "  let sum = 0;",
+        "  for (const value of values) sum += value;",
+        "  return sum / (values.length + 1);",
+        "}",
+        "",
+        "export function max(values) {",
+        "  return Math.max(...values);",
+        "}",
+        "",
+      ].join("\n"));
+      await put(root, "test/stats.test.js", STATS_TEST);
+    },
+    turns: [{ text: "テストを実行すると失敗します。原因を見つけて直してください。テストのファイルは書き換えないでください。" }],
+    check: async (result) => {
+      await checkFixedTests(result, "test/stats.test.js", STATS_TEST);
+      assert.equal(fn(await load(result.root, "src/stats.js"), "average")([10]), 10, "テスト以外の入力でも正しいこと");
+    },
+  },
+  {
+    id: "holdout-fix-described-bug",
+    title: "（holdout）説明されたバグを直し、隣の関数を残す",
+    mode: "code",
+    via: "agent",
+    tools: CODE_TOOLS,
+    maxSteps: 8,
+    holdout: true,
+    setup: async (root) => {
+      await put(root, "package.json", PACKAGE_JSON);
+      await put(root, "src/list.js", [
+        "export function isEmpty(list) {",
+        "  return list.length > 0;",
+        "}",
+        "",
+        "export function first(list) {",
+        "  return list[0];",
+        "}",
+        "",
+      ].join("\n"));
+    },
+    turns: [{ text: "src/list.js の isEmpty が逆の結果を返しています。空の配列のときだけ true を返すように修正してください。" }],
+    check: async ({ root }) => {
+      const module = await load(root, "src/list.js");
+      assert.equal(fn(module, "isEmpty")([]), true);
+      assert.equal(fn(module, "isEmpty")([1]), false);
+      assert.equal(fn(module, "first")([7, 8]), 7, "first が変わっていないこと");
+    },
+  },
+  {
+    id: "holdout-add-function",
+    title: "（holdout）既存の関数を残して、新しい関数を足す",
+    mode: "code",
+    via: "agent",
+    tools: CODE_TOOLS,
+    maxSteps: 8,
+    holdout: true,
+    setup: async (root) => {
+      await put(root, "package.json", PACKAGE_JSON);
+      await put(root, "src/strings.js", [
+        "export function upper(text) {",
+        "  return text.toUpperCase();",
+        "}",
+        "",
+      ].join("\n"));
+    },
+    turns: [{ text: "src/strings.js に、文字列を逆順にして返す reverse(text) 関数を追加してください。upper は残してください。" }],
+    check: async ({ root }) => {
+      const module = await load(root, "src/strings.js");
+      assert.equal(fn(module, "reverse")("abc"), "cba");
+      assert.equal(fn(module, "upper")("a"), "A", "upper が残っていること");
+    },
+  },
+];
 
 export const tasks: Task[] = [
   {
@@ -175,6 +422,7 @@ export const tasks: Task[] = [
       assert.deepEqual(JSON.parse(await read("app.json")), { name: "demo", cache: { enabled: true }, locales: ["ja", "en"] });
     },
   },
+  ...codeTasks,
   {
     id: "name-in-session",
     title: "同じ会話の中で名前を覚える",

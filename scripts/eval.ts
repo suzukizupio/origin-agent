@@ -10,6 +10,7 @@
 //   npm run eval -- --repeat 3
 //   npm run eval -- --repeat 3 --model qwen2.5-coder:7b --out 7b.json
 //   npm run eval -- --repeat 3 --compare 7b.json
+//   npm run eval -- --holdout --repeat 3   … 直し終わってから1回。合計だけを表示する
 
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -50,6 +51,7 @@ type Options = {
   model: string | undefined;
   only: string[];
   offline: boolean;
+  holdout: boolean;
   out: string | undefined;
   compare: string | undefined;
   min: number;
@@ -59,7 +61,7 @@ type Options = {
 function parseArgs(argv: string[]): Options {
   const opts: Options = {
     repeat: 3, provider: "auto", model: undefined, only: [],
-    offline: false, out: undefined, compare: undefined, min: 0, timeoutSec: undefined,
+    offline: false, holdout: false, out: undefined, compare: undefined, min: 0, timeoutSec: undefined,
   };
   const needsValue = ["--repeat", "--provider", "--model", "--only", "--out", "--compare", "--min", "--timeout"];
   for (let i = 0; i < argv.length; i++) {
@@ -77,6 +79,7 @@ function parseArgs(argv: string[]): Options {
     else if (arg === "--min") opts.min = Number(argv[++i]);
     else if (arg === "--timeout") opts.timeoutSec = Number(argv[++i]);
     else if (arg === "--offline") opts.offline = true;
+    else if (arg === "--holdout") opts.holdout = true;
     else if (arg === "--help" || arg === "-h") {
       console.log([
         "使い方: node scripts/eval.ts [オプション]",
@@ -86,6 +89,7 @@ function parseArgs(argv: string[]): Options {
         "  --model <名前>     モデル名",
         "  --only <id,id>     指定した課題だけ走らせる",
         "  --offline          ネットを使う課題を除外する",
+        "  --holdout          holdout の課題だけを走らせ、合計だけを表示する。骨格を直し終わってから使う",
         "  --out <パス>       成績・操作履歴をJSONで保存する（課題ごとに途中保存）",
         "  --compare <パス>   保存した結果と比べて増減を表示する",
         "  --min <0〜1>       全体の成功率がこれ未満なら終了コード1。既定は 0",
@@ -226,7 +230,9 @@ async function main(): Promise<void> {
   }
 
   const selected = allTasks.filter((task) => {
-    if (opts.only.length > 0 && !opts.only.includes(task.id)) return false;
+    if (opts.only.length > 0) {
+      if (!opts.only.includes(task.id)) return false;
+    } else if ((task.holdout === true) !== opts.holdout) return false;
     if (opts.offline && task.network === true) return false;
     return true;
   });
@@ -264,10 +270,12 @@ async function main(): Promise<void> {
     const attempts: Attempt[] = [];
     for (let round = 1; round <= opts.repeat; round++) {
       index++;
-      process.stdout.write(`[${String(index).padStart(2)}/${totalRuns}] ${task.id} #${round} … `);
+      // holdout はどの課題が落ちたかを見せない。見ると、それを通す規則を書いてしまう
+      process.stdout.write(opts.holdout ? `[${String(index).padStart(2)}/${totalRuns}] holdout … ` : `[${String(index).padStart(2)}/${totalRuns}] ${task.id} #${round} … `);
       const attempt = await runOnce(task, provider);
       attempts.push(attempt);
-      console.log(`${attempt.ok ? "✓" : "✗"} ${(attempt.ms / 1000).toFixed(1)}秒${attempt.ok ? "" : `  ${oneLine(attempt.reason ?? "理由不明")}`}`);
+      if (opts.holdout) console.log(`${(attempt.ms / 1000).toFixed(1)}秒`);
+      else console.log(`${attempt.ok ? "✓" : "✗"} ${(attempt.ms / 1000).toFixed(1)}秒${attempt.ok ? "" : `  ${oneLine(attempt.reason ?? "理由不明")}`}`);
     }
     const passed = attempts.filter((a) => a.ok).length;
     report.tasks.push({
@@ -288,7 +296,12 @@ async function main(): Promise<void> {
   }
 
   report.completed = true;
-  printTable(report, previous);
+  if (opts.holdout) {
+    const before = previous ? `（比較対象 ${previous.passed}/${previous.total}）` : "";
+    console.log(`
+holdout 合計 ${report.passed}/${report.total}${before}`);
+    console.log("課題ごとの内訳は表示しません。落ちた課題を直すなら、その課題は tune に移してください。");
+  } else printTable(report, previous);
 
   if (opts.out !== undefined) {
     await writeFile(opts.out, `${JSON.stringify(report, null, 2)}\n`, "utf8");
