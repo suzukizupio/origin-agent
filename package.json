@@ -1,6 +1,6 @@
 {
   "name": "origin-agent",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "description": "差し替え可能な頭脳を持つ、自作コーディングエージェント",
@@ -14,6 +14,7 @@
     "check:growth": "node scripts/check-growth.ts",
     "eval": "node scripts/eval.ts",
     "eval:route": "node scripts/eval-route.ts",
+    "self:propose": "node scripts/self-improve.ts",
     "bench:response": "node scripts/bench-response.ts",
     "typecheck": "tsc --noEmit"
   },
