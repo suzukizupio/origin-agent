@@ -114,7 +114,7 @@ export function researchRoute(input: string, mode: AgentMode, previous?: Researc
     // 「大阪ってどこ」のように、地名の末尾の「府」「市」が省略されても拾う。
     const bare = input.match(/^([\p{L}\dー・]{1,35}?)(?:って|とは|は|の)(?=どこ|どんな場所|何県|所在地|位置|面積|広さ|人口|高さ|標高)/u)?.[1];
     if (bare && !/^(これ|それ|あれ|ここ|そこ|どこ|あなた)$/.test(bare)) {
-      return topicRoute([bare], input.match(ATTRIBUTE)?.[0] ?? "何地方 位置", input);
+      return topicRoute([bare], input.match(ATTRIBUTE)?.[0] ?? (/どんな場所/.test(input) ? "概要 特徴 位置" : "何地方 位置"), input);
     }
   }
 

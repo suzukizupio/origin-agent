@@ -65,6 +65,23 @@ test("ollama: 待ち時間の上限は環境変数で上書きできる", async 
   }
 });
 
+test("ollama: 資料から答える段階では短い生成にし、既定の待ち時間を60秒にする", async (t) => {
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  let request: { options: { num_ctx: number; num_predict: number }; messages: Array<{ role: string; content: string }> } | undefined;
+  globalThis.fetch = (async (_url, init) => {
+    request = JSON.parse(String(init?.body)) as typeof request;
+    return new Response(JSON.stringify({ message: { content: "回答" } }), { headers: { "content-type": "application/json" } });
+  }) as typeof fetch;
+  const env = { root: "", outline: "", researchAnswerOnly: true };
+  assert.equal(await createOllamaProvider().complete([{ role: "tool", toolName: "web_fetch", content: "所在地の資料" }], [], env), "回答");
+  assert.deepEqual(request?.options, { temperature: 0.2, num_ctx: 8192, num_predict: 256, repeat_penalty: 1.15 });
+  assert.equal(request?.messages.at(-1)?.content, "[参考資料]\n所在地の資料");
+
+  globalThis.fetch = failingFetch("TimeoutError");
+  await assert.rejects(createOllamaProvider().complete([], [], env), /60 秒以内に返りませんでした/);
+});
+
 test("ollama: UTF-8とJSONの分割を復元し、完了前に文字を渡す", async (t) => {
   const original = globalThis.fetch;
   t.after(() => { globalThis.fetch = original; });

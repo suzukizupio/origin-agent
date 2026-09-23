@@ -5,6 +5,7 @@ import { Assistant } from "../src/assistant.ts";
 import { LearningStore } from "../src/learning.ts";
 import { researchRoute } from "../src/routing.ts";
 import { evidenceText, unknownCitations, unsupportedNumbers } from "../src/evidence.ts";
+import { ProviderTimeoutError } from "../src/types.ts";
 import type { AgentEvent, Provider, Tool } from "../src/types.ts";
 import { temporaryDirectory } from "./helpers.ts";
 
@@ -18,6 +19,9 @@ test("routing: 大阪など語尾を省いた地名も検索し、比較の基�
     assert.match(String(route.firstCall?.args.query), new RegExp(name));
     assert.equal(route.readSource, true);
   }
+  const overview = researchRoute("つくばみらい市ってどんな場所？", "chat");
+  assert.match(String(overview.firstCall?.args.query), /つくばみらい市 概要 特徴 位置/);
+  assert.deepEqual(overview.focus, ["概要", "特徴", "位置"]);
   const compare = researchRoute("秋田と岩手ってどっちが大きいですか？", "chat");
   assert.equal(compare.firstCall, undefined);
   assert.match(compare.clarification!, /面積と人口/);
@@ -155,4 +159,45 @@ test("research: 対象名の繰り返しだけの回答は見直し、資料の�
   assert.equal(calls, 2);
   assert.match(output(events), /近畿地方/);
   assert.doesNotMatch(output(events), /大阪府。/);
+});
+
+test("research: モデルが時間切れでも取得済みの公式ページから出典付きで返す", async (t) => {
+  const dir = await temporaryDirectory(t);
+  const url = "https://www.city.example.lg.jp/gyousei/shoukai/page002206.html";
+  const web: Tool[] = [
+    { name: "web_search", description: "test", params: [], run: async () =>
+      `1. 市の概要 | 公式ホームページ\nURL: ${url}\n抜粋: つくばみらい市の概要です。` },
+    { name: "web_fetch", description: "test", params: [], run: async () =>
+      `市の概要\n${url}\n[Webページの参考資料]\n平成18年に旧伊奈町と旧谷和原村が合併し、つくばみらい市が誕生しました。\n当市は茨城県の南西部に位置し、鬼怒川と小貝川が流れています。` },
+  ];
+  let calls = 0;
+  const provider: Provider = { name: "slow", complete: async () => { calls++; throw new ProviderTimeoutError("time limit"); } };
+  const agent = new Agent({ provider, tools: web, mode: "chat", ctx: { root: dir, confirm: async () => true } });
+  const events: AgentEvent[] = [];
+
+  await new Assistant(agent, new LearningStore(dir)).run("つくばみらい市ってどんな場所？", (e) => events.push(e));
+
+  assert.equal(calls, 1);
+  assert.match(output(events), /茨城県の南西部/);
+  assert.match(output(events), /\[出典\]\(https:\/\/www\.city\.example/);
+  assert.match(output(events), /時間切れ/);
+  assert.ok(events.some((e) => e.type === "done" && e.reason === "answered"));
+  assert.equal(agent.messages.at(-1)?.role, "assistant");
+});
+
+test("research: 回答の後に付いた無関係な未確認文を表示しない", async (t) => {
+  const dir = await temporaryDirectory(t);
+  const provider: Provider = { name: "small", complete: async () =>
+    "つくばみらい市は茨城県の南西部に位置しています。\n\n確認できませんでした。" };
+  const web: Tool[] = [
+    { name: "web_search", description: "test", params: [], run: async () =>
+      `1. 市の概要\nURL: ${first}\n抜粋: つくばみらい市は茨城県の南西部に位置しています。` },
+    { name: "web_fetch", description: "test", params: [], run: async () =>
+      `${first}\n[Webページの参考資料]\nつくばみらい市は茨城県の南西部に位置しています。` },
+  ];
+  const events: AgentEvent[] = [];
+  await new Assistant(new Agent({ provider, tools: web, mode: "chat", ctx: { root: dir, confirm: async () => true } }),
+    new LearningStore(dir)).run("つくばみらい市ってどんな場所？", (e) => events.push(e));
+  assert.match(output(events), /茨城県の南西部/);
+  assert.doesNotMatch(output(events), /確認できませんでした/);
 });

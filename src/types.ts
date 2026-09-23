@@ -87,6 +87,14 @@ export type Provider = {
   complete: (messages: Message[], tools: Tool[], env: AgentEnv, options?: CompletionOptions) => Promise<string>;
 };
 
+/** モデルが制限時間内に応答を完了できなかった。取得済み資料からの代替回答に使う。 */
+export class ProviderTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProviderTimeoutError";
+  }
+}
+
 export type CompletionStats = {
   elapsedMs: number;
   firstTokenMs?: number;

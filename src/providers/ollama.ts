@@ -5,6 +5,7 @@
 // 自作モデルを繋ぐときも、書くのはこれと同じ形の 40 行で済む。
 
 import { buildSystemPrompt } from "../protocol.ts";
+import { ProviderTimeoutError } from "../types.ts";
 import type { AgentEnv, CompletionOptions, CompletionStats, Provider, Tool, Message } from "../types.ts";
 
 type OllamaChatResponse = {
@@ -75,10 +76,10 @@ export async function installedModels(): Promise<string[]> {
  * 2 分近くかかることがある。固定値だと、モデルの能力ではなく待ち時間の上限で失敗してしまい、
  * 採点で「大きいモデルほど悪い」という誤った結論になる。
  */
-function requestTimeoutMs(explicit: number | undefined): number {
+function requestTimeoutMs(explicit: number | undefined, answerOnly: boolean): number {
   if (explicit !== undefined) return explicit;
   const fromEnv = Number(process.env.ORIGIN_OLLAMA_TIMEOUT_MS);
-  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 120_000;
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : answerOnly ? 60_000 : 120_000;
 }
 
 export function createOllamaProvider(
@@ -98,9 +99,9 @@ export function createOllamaProvider(
     contextBudget: numCtx * 2 - 4_000,
     async complete(messages: Message[], tools: Tool[], env: AgentEnv, callbacks: CompletionOptions = {}) {
       const started = performance.now();
-      const timeoutMs = requestTimeoutMs(opts.timeoutMs);
+      const timeoutMs = requestTimeoutMs(opts.timeoutMs, env.researchAnswerOnly === true);
       const signal = AbortSignal.timeout(timeoutMs);
-      const timeoutError = () => new Error(
+      const timeoutError = () => new ProviderTimeoutError(
         `Ollama の応答が ${Math.round(timeoutMs / 1000)} 秒以内に返りませんでした (${model})。` +
         "環境変数 ORIGIN_OLLAMA_TIMEOUT_MS（ミリ秒）で待ち時間を延ばせます。",
       );
@@ -108,7 +109,8 @@ export function createOllamaProvider(
         model,
         stream: callbacks.onText !== undefined,
         // repeat_penalty なしだと、行き詰まった小さいモデルが同じ段落を繰り返す
-        options: { temperature: 0.2, num_ctx: numCtx, num_predict: 1024, repeat_penalty: 1.15 },
+        options: { temperature: 0.2, num_ctx: numCtx,
+          num_predict: env.researchAnswerOnly ? 256 : 1024, repeat_penalty: 1.15 },
         messages: [
           { role: "system", content: buildSystemPrompt(tools, env) },
           ...messages.map((m) =>
@@ -120,11 +122,9 @@ export function createOllamaProvider(
             m.role === "tool"
               ? {
                   role: "user",
-                  content:
-                    `[あなたが呼び出した ${m.toolName} の出力]\n${m.content}\n\n` +
-                    (env.researchAnswerOnly
-                      ? "この参考資料から最初の質問に答えてください。追加検索は不要です。資料に答えがなければ確認できなかったと伝えてください。"
-                      : "この結果を踏まえ、必要ならツールを呼んで作業を続けてください。"),
+                  content: env.researchAnswerOnly
+                    ? `[参考資料]\n${m.content}`
+                    : `[あなたが呼び出した ${m.toolName} の出力]\n${m.content}\n\nこの結果を踏まえ、必要ならツールを呼んで作業を続けてください。`,
                 }
               : { role: m.role, content: m.content },
           ),

@@ -12,9 +12,10 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { createTextPreview } from "./streaming.ts";
 import { evidenceText, unknownCitations, unsupportedNumbers } from "./evidence.ts";
 import { compareEvidence, type Comparison, type SourceDocument } from "./comparison.ts";
-import { focusEvidence, locationEvidence, rankSources, searchExcerpts } from "./retrieval.ts";
+import { focusEvidence, locationEvidence, rankSources, searchExcerpts, timeoutExcerpt } from "./retrieval.ts";
 import { walkEntries } from "./tools/walk.ts";
 import { show } from "./tools/paths.ts";
+import { ProviderTimeoutError } from "./types.ts";
 import type { AgentEnv, AgentEvent, AgentMode, Message, Provider, Tool, ToolCall, ToolContext } from "./types.ts";
 
 /** 同一のツール呼び出しがこの回数に達したら、行き詰まりとみなして打ち切る */
@@ -307,16 +308,36 @@ export class Agent {
       const completionMessages: Message[] = answerOnly
         ? [...researchMessages, { role: "user", content: input }]
         : this.messages;
-      const raw = pendingCall !== undefined
-        ? formatToolCall(pendingCall.name, pendingCall.args)
-        : await activeProvider.complete(completionMessages, answerOnly ? [] : tools, { ...env, researchAnswerOnly: answerOnly }, {
-          // 調べものは検査後に表示する。誤った数値を先に流してしまわない。
-          onText: research || (repairRequested && failingTest) ? () => {} : createTextPreview((text) => emit({ type: "assistant_delta", text })),
-          onStats: (stats) => emit({ type: "model_stats", stats }),
-        });
+      let raw: string;
+      try {
+        raw = pendingCall !== undefined
+          ? formatToolCall(pendingCall.name, pendingCall.args)
+          : await activeProvider.complete(completionMessages, answerOnly ? [] : tools, { ...env, researchAnswerOnly: answerOnly }, {
+            // 調べものは検査後に表示する。誤った数値を先に流してしまわない。
+            onText: research || (repairRequested && failingTest) ? () => {} : createTextPreview((text) => emit({ type: "assistant_delta", text })),
+            onStats: (stats) => emit({ type: "model_stats", stats }),
+          });
+      } catch (error) {
+        if (research && error instanceof ProviderTimeoutError) {
+          const excerpt = timeoutExcerpt(documents, excerpts, [...(context.topic?.subjects ?? []), ...(context.focus ?? [])]);
+          if (excerpt) {
+            this.messages.push({ role: "assistant", content: excerpt });
+            emit({ type: "assistant", text: excerpt });
+            emit({ type: "done", reason: "answered" });
+            return;
+          }
+        }
+        throw error;
+      }
       this.messages.push({ role: "assistant", content: raw });
 
-      const { calls, say } = parseToolCalls(raw);
+      const parsed = parseToolCalls(raw);
+      const calls = parsed.calls;
+      // 小さいモデルは回答を示した後に、無関係な「確認できませんでした」を1行足すことがある。
+      // 先に実質的な文がある場合だけ、その独立した行を除く。
+      const say = research && calls.length === 0
+        ? parsed.say.replace(/(。|！|？)(?:\r?\n){2,}確認できませんでした[。.!]?(?=\r?\n|$)/g, "$1").trim()
+        : parsed.say;
       // ツールを呼ばなかった = 言いたいことは言い切った、とみなす
       if (calls.length === 0) {
         if (repairRequested && failingTest) {
@@ -342,7 +363,7 @@ export class Agent {
             .replace(/\[(?:出典|参照元|参考資料)(?:\s*\d+)?\]/g, "").replace(/(?:参照元|出典)\s*[:：]/g, "");
           const nameOnly = withoutLinks.replace(/[\s。！!：:#*]/g, "").replace(/[都道府県市]$/, "");
           const incomplete = !!nameOnly && context.topic?.subjects.some((subject) => subject.replace(/[都道府県市]$/, "") === nameOnly);
-          const instructionEcho = /この参考資料から最初の質問に|追加検索は不要です|今回調べる対象:|確認する項目:/.test(say);
+          const instructionEcho = /この参考資料から最初の質問に|追加検索は不要です|今回調べる対象:|確認する項目:|\[あなたが呼び出した [^\]]+ の出力\]|\[参考資料\]/.test(say);
           if (missing.length || urls.length || incomplete || instructionEcho) {
             this.messages.pop(); // 誤った回答を会話の事実として残さない。
             if (revising || step === this.maxSteps - 1) { finishResearchFailure(); return; }

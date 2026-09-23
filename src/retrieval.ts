@@ -70,3 +70,37 @@ export function locationEvidence(subject: string, documents: { url: string; text
     }
   }
 }
+
+/** 要約モデルが時間切れになった場合、取得済み資料の関連文だけを引用する。 */
+export function timeoutExcerpt(
+  documents: { url: string; text: string }[],
+  excerpts: { url: string; text: string }[],
+  terms: string[],
+): string | undefined {
+  const sources = [
+    ...documents.map((source) => ({ ...source, kind: "ページ" })),
+    ...excerpts.map((source) => ({ ...source, kind: "検索結果" })),
+  ];
+  const keywords = [...new Set(terms.flatMap((term) => term === "何地方" ? ["地方", "位置", "県"] : [term]).filter(Boolean))];
+  for (const source of sources) {
+    const sentences = source.text.replace(/\s+/g, " ").match(/[^。！？]+[。！？]/g)
+      ?.map((sentence) => sentence.trim()).filter((sentence) => sentence.length >= 20 && sentence.length <= 400)
+      ?? [];
+    // 検索結果の抜粋は句点のない短文もある。
+    if (sentences.length === 0 && source.text.trim()) sentences.push(source.text.trim().slice(0, 400));
+    const ranked = sentences.map((sentence, index) => ({ sentence, index,
+      score: keywords.reduce((score, keyword) => score + (sentence.includes(keyword) ? 3 : 0), 0)
+        + (/当市|本市/.test(sentence) ? 2 : 0),
+    })).sort((a, b) => b.score - a.score || a.index - b.index);
+    const chosen = ranked.filter((item) => item.score > 0).slice(0, 2);
+    if (chosen.length === 0) continue;
+    const quote: string[] = [];
+    for (const item of chosen.sort((a, b) => a.index - b.index)) {
+      if (quote.join(" ").length + item.sentence.length > 500) break;
+      quote.push(item.sentence);
+    }
+    if (!quote.length) continue;
+    return `要約が時間切れになりました。取得済みの${source.kind}から関連箇所を引用します。\n\n> ${quote.join(" ")}\n\n[出典](${source.url})`;
+  }
+  return undefined;
+}
