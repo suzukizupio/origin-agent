@@ -174,6 +174,25 @@ test("edit_file: 見つからない old_string は失敗する", async () => {
   }
 });
 
+test("edit_file: 改行の二重エスケープと既存関数の消失を具体的に示す", async () => {
+  const fx = await fixture();
+  try {
+    const source = "export function subtract(a, b) {\n  return a - b;\n}\n";
+    await writeFile(join(fx.root, "math.js"), source, "utf8");
+    const message = await editFileTool.run({
+      path: "math.js",
+      old_string: "export function subtract(a, b) {\\n  return a - b;\\n}",
+      new_string: "export function multiply(a, b) {\\n  return a * b;\\n}",
+    }, fx.ctx).then(() => assert.fail("既存の関数を消してはいけない"), (error: Error) => error.message);
+    assert.match(message, /2文字のまま/);
+    assert.match(message, /subtract の定義が消えます/);
+    assert.match(message, /old_string を空文字/);
+    assert.equal(await readFile(join(fx.root, "math.js"), "utf8"), source);
+  } finally {
+    await fx.dispose();
+  }
+});
+
 test("edit_file: 見つからないときは、実物の近い行をそのまま引用できる形で示す", async () => {
   const fx = await fixture();
   try {

@@ -295,11 +295,20 @@ export const editFileTool: Tool = {
     if (hits === 0) {
       // 小さいモデルの典型的な外し方を先回りして名指しする。
       // 「見つかりません」だけだと、同じ old_string で延々と再試行してくる。
+      const unescaped = oldString.replaceAll("\\n", "\n");
+      const escapedNewlines = unescaped !== oldString && before.includes(unescaped);
+      const removedDefinitions = [...definedNames(oldString)].filter((name) => !definedNames(newString).has(name));
       const looksLikeRegex = /\\[dws.+*?]|\[\^?.+\]|\.\*|\\\./.test(oldString);
       const near = nearestLines(before, oldString);
       throw new Error(
         [
           `old_string がファイル内に見つかりません。`,
+          ...(escapedNewlines ? [
+            `old_string の \\n が実際の改行ではなく、2文字のまま渡されています。JSON では改行を \\n と1回だけエスケープしてください。`,
+          ] : []),
+          ...(removedDefinitions.length > 0 ? [
+            `この置換案では既存の ${removedDefinitions.join("、")} の定義が消えます。新しい関数を追加するだけなら old_string を空文字にし、new_string に新しい関数だけを書いて末尾へ追加してください。`,
+          ] : []),
           ...(near.length > 0
             ? ["ファイル内の近い行（実物はこう書かれています。old_string には \"\" の中身をそのまま使えます）:", ...near]
             : []),

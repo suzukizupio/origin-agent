@@ -4,12 +4,27 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Agent } from "../src/agent.ts";
 import { formatToolCall } from "../src/protocol.ts";
-import type { AgentEvent, Provider, Tool } from "../src/types.ts";
+import { ProviderTimeoutError, type AgentEvent, type Provider, type Tool } from "../src/types.ts";
 import { temporaryDirectory } from "./helpers.ts";
 
 const answer = (events: AgentEvent[]) => events
   .filter((event): event is Extract<AgentEvent, { type: "assistant" }> => event.type === "assistant")
   .map((event) => event.text).at(-1);
+
+test("code: ローカルモデルの時間切れでも未完了を回答として返す", async (t) => {
+  const root = await temporaryDirectory(t);
+  const provider: Provider = { name: "slow-local", complete: async () => {
+    throw new ProviderTimeoutError("ローカルモデルが時間切れです。");
+  } };
+  const agent = new Agent({ provider, tools: [], mode: "code", ctx: { root, confirm: async () => true } });
+  const events: AgentEvent[] = [];
+
+  await agent.run("関数を追加してください。", (event) => events.push(event));
+
+  assert.match(answer(events) ?? "", /時間切れ.*完了していません/s);
+  assert.equal(events.at(-1)?.type, "done");
+  assert.equal(agent.messages.at(-1)?.role, "assistant");
+});
 
 test("code: 失敗テストの修正だけ強いモデルを使い、モデル切り替え後は引き継がない", async (t) => {
   const root = await temporaryDirectory(t);

@@ -310,13 +310,29 @@ export class Agent {
         : this.messages;
       let raw: string;
       try {
-        raw = pendingCall !== undefined
-          ? formatToolCall(pendingCall.name, pendingCall.args)
-          : await activeProvider.complete(completionMessages, answerOnly ? [] : tools, { ...env, researchAnswerOnly: answerOnly }, {
-            // 調べものは検査後に表示する。誤った数値を先に流してしまわない。
-            onText: research || (repairRequested && failingTest) ? () => {} : createTextPreview((text) => emit({ type: "assistant_delta", text })),
-            onStats: (stats) => emit({ type: "model_stats", stats }),
-          });
+        if (pendingCall !== undefined) {
+          raw = formatToolCall(pendingCall.name, pendingCall.args);
+        } else {
+          const startedWaiting = Date.now();
+          let lastOutput = startedWaiting;
+          const preview = research || (repairRequested && failingTest)
+            ? () => {}
+            : createTextPreview((text) => emit({ type: "assistant_delta", text }));
+          const progress = setInterval(() => {
+            if (Date.now() - lastOutput >= 30_000) {
+              emit({ type: "notice", message: `${activeProvider.name} の応答を待っています（${Math.round((Date.now() - startedWaiting) / 1000)}秒）。` });
+            }
+          }, 30_000);
+          try {
+            raw = await activeProvider.complete(completionMessages, answerOnly ? [] : tools, { ...env, researchAnswerOnly: answerOnly }, {
+              // 調べものは検査後に表示する。誤った数値を先に流してしまわない。
+              onText: (text) => { lastOutput = Date.now(); preview(text); },
+              onStats: (stats) => emit({ type: "model_stats", stats }),
+            });
+          } finally {
+            clearInterval(progress);
+          }
+        }
       } catch (error) {
         if (research && error instanceof ProviderTimeoutError) {
           const excerpt = timeoutExcerpt(documents, excerpts, [...(context.topic?.subjects ?? []), ...(context.focus ?? [])]);
@@ -326,6 +342,13 @@ export class Agent {
             emit({ type: "done", reason: "answered" });
             return;
           }
+        }
+        if (error instanceof ProviderTimeoutError) {
+          const answer = `${error.message}\nこの依頼は完了していません。時間のかかるローカルモデルでは、待ち時間を延ばすか、短い作業に分けて再試行してください。`;
+          this.messages.push({ role: "assistant", content: answer });
+          emit({ type: "assistant", text: answer });
+          emit({ type: "done", reason: "answered" });
+          return;
         }
         throw error;
       }
