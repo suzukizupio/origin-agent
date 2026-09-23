@@ -1,6 +1,6 @@
 {
   "name": "origin-agent",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "差し替え可能な頭脳を持つ、自作コーディングエージェント",

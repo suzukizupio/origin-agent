@@ -9,7 +9,7 @@ import { Assistant } from "./assistant.ts";
 import { LearningStore } from "./learning.ts";
 import { ReplyPrinter } from "./streaming.ts";
 import { allTools } from "./tools/index.ts";
-import { resolveProvider, providerNames } from "./providers/index.ts";
+import { resolveProviderSelection, providerNames } from "./providers/index.ts";
 import type { AgentEvent, AgentMode, CompletionStats } from "./types.ts";
 
 const c = {
@@ -113,7 +113,7 @@ function render(event: AgentEvent): void {
 
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
-  const provider = await resolveProvider(opts.provider, opts.model);
+  const selection = await resolveProviderSelection(opts.provider, opts.model);
   const store = new LearningStore(opts.dataDir ?? join(opts.root, ".origin-agent"));
   const saved = await store.read();
   const rl = readline.createInterface({ input: stdin, output: stdout });
@@ -145,7 +145,7 @@ async function main(): Promise<void> {
   };
 
   const agent = new Agent({
-    provider,
+    ...selection,
     tools: allTools,
     mode: opts.mode,
     ctx: {
@@ -173,7 +173,7 @@ async function main(): Promise<void> {
   stdout.write(
     [
       "",
-      c.bold("origin-agent") + c.dim(" v0.5.0"),
+      c.bold("origin-agent") + c.dim(" v0.8.0"),
       c.dim(`  頭脳: ${agent.provider.name}`),
       c.dim(`  モード: ${agent.mode === "chat" ? "会話・ネット検索" : "コーディング"}`),
       c.dim(`  作業ルート: ${opts.root}`),
@@ -245,7 +245,8 @@ async function main(): Promise<void> {
         continue;
       }
       try {
-        agent.provider = await resolveProvider(name, model);
+        const next = await resolveProviderSelection(name, model);
+        agent.setProviders(next.provider, next.repairProvider);
         assistant.reset();
         stdout.write(c.green(`  頭脳を ${agent.provider.name} に差し替えました\n`));
       } catch (e) {

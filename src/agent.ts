@@ -7,6 +7,8 @@
 // 賢さの差はモデルと、ここに足されるツール・コンテキスト管理から来る。
 
 import { formatToolCall, parseToolCalls } from "./protocol.ts";
+import { readFile, realpath, stat } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { createTextPreview } from "./streaming.ts";
 import { evidenceText, unknownCitations, unsupportedNumbers } from "./evidence.ts";
 import { compareEvidence, type Comparison, type SourceDocument } from "./comparison.ts";
@@ -25,6 +27,75 @@ const REPEAT_LIMIT = 3;
  * 編集後の確認に入ったところで打ち切っていた。
  */
 const MUTATING_TOOLS = new Set(["edit_file", "replace_lines", "write_file", "edit_json", "run_shell"]);
+const EDIT_TOOLS = new Set(["edit_file", "replace_lines", "write_file", "edit_json"]);
+
+function isTestPath(path: unknown): boolean {
+  if (typeof path !== "string") return false;
+  const normalized = path.replaceAll("\\", "/");
+  return /(?:^|\/)(?:test|tests|__tests__)\/|\.(?:test|spec)\.[cm]?[jt]sx?$/i.test(normalized);
+}
+
+/** 再実行するのは、モデルが一度実行した単独のテストコマンドだけ。 */
+function testCommand(command: unknown): string | undefined {
+  if (typeof command !== "string") return undefined;
+  const trimmed = command.trim();
+  // PowerShell の式展開や、追加の処理を含むコマンドを繰り返さない。
+  if (!/^[\w.\/\\:= \t-]+$/.test(trimmed)) return undefined;
+  return /^(?:npm(?:\.cmd)?\s+(?:test|run\s+test(?:[:\w-]*)?)(?:\s|$)|pnpm(?:\.cmd)?\s+test(?:\s|$)|node(?:\.exe)?\s+--test(?:\s|$))/i.test(trimmed)
+    ? trimmed : undefined;
+}
+
+function shellExitCode(output: string): number | undefined {
+  const match = output.match(/^\(終了コード (\d+)\)/);
+  return match ? Number(match[1]) : undefined;
+}
+
+/** テストの出力に現れた、見取り図内のテストファイルを1つだけ選ぶ。 */
+function failedTestFile(output: string, outline: string): string | undefined {
+  const normalized = output.replaceAll("\\", "/");
+  const candidates = outline.split("\n").filter((file) => /(?:^|\/)(?:test|tests|__tests__)\/|\.(?:test|spec)\.[cm]?[jt]sx?$/i.test(file))
+    .filter((file) => !file.endsWith("/"));
+  const matches = candidates.filter((file) => normalized.includes(file));
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+async function hasTestScript(root: string): Promise<boolean> {
+  try {
+    const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8")) as { scripts?: { test?: unknown } };
+    return typeof packageJson.scripts?.test === "string";
+  } catch {
+    return false;
+  }
+}
+
+async function localFile(root: string, file: string): Promise<boolean> {
+  try {
+    const actualRoot = await realpath(root);
+    const actualFile = await realpath(file);
+    const path = relative(actualRoot, actualFile);
+    return path !== "" && !path.startsWith("..") && !isAbsolute(path) && (await stat(actualFile)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+/** テストが相対 import している実装を、作業ルート内から1件だけ見つける。 */
+async function importedSource(root: string, testFile: string): Promise<string | undefined> {
+  try {
+    const testPath = join(root, testFile);
+    if (!await localFile(root, testPath) || (await stat(testPath)).size > 200_000) return undefined;
+    const source = await readFile(testPath, "utf8");
+    for (const match of source.matchAll(/\bfrom\s*["'](\.[^"']+)["']|\brequire\s*\(\s*["'](\.[^"']+)["']\s*\)/g)) {
+      const imported = match[1] ?? match[2];
+      if (!imported) continue;
+      const absolute = resolve(root, dirname(testFile), imported);
+      const path = relative(root, absolute);
+      if (path.startsWith("..") || isAbsolute(path) || /(?:^|[\\/])(?:test|tests|__tests__)[\\/]/i.test(path)) continue;
+      if (await localFile(root, absolute)) return path.replaceAll("\\", "/");
+    }
+  } catch { /* 読めなければ通常のモデル判断に任せる */ }
+  return undefined;
+}
 
 function normalizeUrl(raw: string): string {
   try {
@@ -63,6 +134,8 @@ export type RunContext = { knowledge?: string; research?: boolean; allowWeb?: bo
 
 export type AgentOptions = {
   provider: Provider;
+  /** 失敗テストの修正依頼だけで使う、任意の強い頭脳 */
+  repairProvider?: Provider;
   tools: Tool[];
   ctx: ToolContext;
   /** 1回の指示で頭脳に問い合わせる上限。暴走と課金事故の歯止め */
@@ -74,6 +147,7 @@ export type AgentOptions = {
 
 export class Agent {
   provider: Provider;
+  private repairProvider: Provider | undefined;
   ctx: ToolContext;
   messages: Message[] = [];
 
@@ -86,6 +160,7 @@ export class Agent {
 
   constructor(opts: AgentOptions) {
     this.provider = opts.provider;
+    this.repairProvider = opts.repairProvider;
     this.ctx = opts.ctx;
     this.tools = new Map(opts.tools.map((t) => [t.name, t]));
     this.maxSteps = opts.maxSteps ?? 12;
@@ -93,9 +168,11 @@ export class Agent {
     this.currentMode = opts.mode ?? "code";
   }
 
-  /** 頭脳は実行中に差し替えられるので、都度その頭脳の申告を読む */
-  private get contextBudget(): number {
-    return this.contextBudgetOverride ?? this.provider.contextBudget ?? 60_000;
+  /** 明示的な頭脳の切り替えでは、以前の自動修正用モデルを残さない。 */
+  setProviders(provider: Provider, repairProvider?: Provider): void {
+    this.provider = provider;
+    this.repairProvider = repairProvider;
+    this.reset();
   }
 
   get toolList(): Tool[] {
@@ -145,6 +222,14 @@ export class Agent {
   ): Promise<void> {
     this.messages.push({ role: "user", content: input });
     this.outline = null;
+    const repairRequested = this.mode === "code" && /直し(?:て|、|ください)|直して|修正(?:して|し|を)|解消(?:して|し)|通るよう|\bfix\b|\brepair\b/i.test(input);
+    const noTests = /(?:テスト|test).{0,12}(?:実行しない|走らせない|runしない)|(?:実行しない|走らせない).{0,12}(?:テスト|test)|do not run tests/i.test(input);
+    const preserveTests = /(?:テスト(?:の)?ファイル|tests?|test files?).{0,20}(?:変更しない|書き換えない|編集しない|触らない)|(?:変更しない|書き換えない|編集しない).{0,20}(?:テスト(?:の)?ファイル|tests?|test files?)|do not (?:modify|edit|change) (?:the )?tests?/i.test(input);
+    const failingTestRequest = repairRequested && !noTests && /(?:npm\s+test|テスト.{0,20}(?:失敗|落ち|通らない)|(?:失敗|落ち|通らない).{0,20}テスト|tests?.{0,20}fail|fail(?:ing|ed)?.{0,20}tests?)/i.test(input);
+    const activeProvider = failingTestRequest ? this.repairProvider ?? this.provider : this.provider;
+    if (activeProvider !== this.provider) {
+      emit({ type: "notice", message: `失敗テストの修正に ${activeProvider.name} を使います。応答には数分かかることがあります。` });
+    }
     let research = context.research === true || firstCall?.name.startsWith("web_") === true;
     const env = { ...await this.buildEnv(), knowledge: context.knowledge, research };
     const availableTools = this.toolList.filter((tool) => context.allowWeb !== false || !tool.name.startsWith("web_"));
@@ -160,6 +245,10 @@ export class Agent {
     const inputUrls = [...input.matchAll(/https?:\/\/[^\s「」<>]+/g)].map((match) => match[0].replace(/[。！？、)）]+$/, ""));
     const fetched = new Set<string>();
     const pendingCalls: Pick<ToolCall, "name" | "args">[] = firstCall ? [firstCall] : [];
+    if (!firstCall && failingTestRequest && availableTools.some((tool) => tool.name === "run_shell")
+      && await hasTestScript(this.ctx.root)) {
+      pendingCalls.push({ name: "run_shell", args: { command: "npm test" } });
+    }
     pendingCalls.push(...(context.additionalSearches ?? []).slice(0, 1).map((query) => ({ name: "web_search", args: { query, limit: 5 } })));
     let sourceReads = 0;
     const evidence: string[] = [];
@@ -178,9 +267,13 @@ export class Agent {
     // 行き詰まった頭脳は、同じ呼び出しを延々と繰り返す。
     // maxSteps だけでは何十秒も無駄に回るので、繰り返し自体を検出して止める。
     const repeats = new Map<string, number>();
+    let failingTest: { command: string; output: string } | undefined;
+    let repairNudges = 0;
+    const loadedTestFiles = new Set<string>();
+    const loadedSourceFiles = new Set<string>();
 
     for (let step = 0; step < this.maxSteps; step++) {
-      this.trimContext(emit);
+      this.trimContext(emit, activeProvider);
       const tools = revising ? [] : availableTools.filter((tool) => tool.name !== "edit_json" || jsonRelevant);
 
       // /search はユーザーが明示した検索。小さいモデルのツール選択に頼らず実行する。
@@ -216,9 +309,9 @@ export class Agent {
         : this.messages;
       const raw = pendingCall !== undefined
         ? formatToolCall(pendingCall.name, pendingCall.args)
-        : await this.provider.complete(completionMessages, answerOnly ? [] : tools, { ...env, researchAnswerOnly: answerOnly }, {
+        : await activeProvider.complete(completionMessages, answerOnly ? [] : tools, { ...env, researchAnswerOnly: answerOnly }, {
           // 調べものは検査後に表示する。誤った数値を先に流してしまわない。
-          onText: research ? () => {} : createTextPreview((text) => emit({ type: "assistant_delta", text })),
+          onText: research || (repairRequested && failingTest) ? () => {} : createTextPreview((text) => emit({ type: "assistant_delta", text })),
           onStats: (stats) => emit({ type: "model_stats", stats }),
         });
       this.messages.push({ role: "assistant", content: raw });
@@ -226,6 +319,22 @@ export class Agent {
       const { calls, say } = parseToolCalls(raw);
       // ツールを呼ばなかった = 言いたいことは言い切った、とみなす
       if (calls.length === 0) {
+        if (repairRequested && failingTest) {
+          this.messages.pop(); // テスト未通過の「完了」を履歴に残さない。
+          if (repairNudges < 2 && step < this.maxSteps - 1) {
+            repairNudges++;
+            this.messages.push({ role: "tool", toolName: "test_check", content:
+              "テストはまだ失敗しています。テストの入力と期待値を最初から追い、実装のどこで結果がずれるか調べてください。" +
+              "結果に定数を足すだけの修正は避け、原因となる処理を直してください。必要ならテストと実装を読み直してください。\n" +
+              failingTest.output.slice(-1500) });
+            continue;
+          }
+          const answer = `修正を完了できませんでした。テストはまだ失敗しています。\n${failingTest.output.slice(-1200)}`;
+          this.messages.push({ role: "assistant", content: answer });
+          emit({ type: "assistant", text: answer });
+          emit({ type: "done", reason: "answered" });
+          return;
+        }
         if (research) {
           const missing = unsupportedNumbers(say, evidence);
           const urls = unknownCitations(say, [...sources, ...fetched]);
@@ -281,11 +390,56 @@ export class Agent {
         // 使えない web_ ツールを呼んだだけで調べものに切り替えない。切り替えると、
         // 「使えません」のエラーを調べものの失敗として扱い、作業ごと打ち切ってしまう。
         if (call.name.startsWith("web_") && tools.some((tool) => tool.name === call.name)) { research = true; env.research = true; }
-        const refusal = research ? checkResearchFetch(call, [...sources, ...inputUrls], fetched) : undefined;
+        const refusal = preserveTests && EDIT_TOOLS.has(call.name) && isTestPath(call.args.path)
+          ? "この依頼ではテストファイルの変更が禁止されています。実装側のファイルを調べて修正してください。"
+          : noTests && call.name === "run_shell" && testCommand(call.args.command)
+            ? "この依頼ではテストを実行しないよう指定されています。テストは実行せず、確認できていないことを回答で伝えてください。"
+          : research ? checkResearchFetch(call, [...sources, ...inputUrls], fetched) : undefined;
         const { text, ok } = refusal !== undefined ? { text: refusal, ok: false } : await this.invoke(call, tools);
-        emit({ type: "tool_end", name: call.name, result: text, ok });
+        emit({ type: "tool_end", name: call.name, result: text,
+          ok: ok && (call.name !== "run_shell" || shellExitCode(text) === 0) });
         this.messages.push({ role: "tool", toolName: call.name, content: text });
-        if (ok && MUTATING_TOOLS.has(call.name)) repeats.clear();
+        if (repairRequested && ok && call.name === "run_shell") {
+          const command = testCommand(call.args.command);
+          const code = shellExitCode(text);
+          if (command && code !== undefined) {
+            failingTest = code === 0 ? undefined : { command, output: text };
+            if (failingTest && tools.some((tool) => tool.name === "read_file")) {
+              const file = failedTestFile(text, env.outline);
+              if (file && !loadedTestFiles.has(file) && await localFile(this.ctx.root, join(this.ctx.root, file))) {
+                pendingCalls.unshift({ name: "read_file", args: { path: file } });
+                loadedTestFiles.add(file);
+              }
+            }
+          }
+        }
+        if (repairRequested && failingTest && ok && call.name === "read_file"
+          && typeof call.args.path === "string" && loadedTestFiles.has(call.args.path)
+          && tools.some((tool) => tool.name === "read_file")) {
+          const source = await importedSource(this.ctx.root, call.args.path);
+          if (source && !loadedSourceFiles.has(source)) {
+            pendingCalls.unshift({ name: "read_file", args: { path: source } });
+            loadedSourceFiles.add(source);
+          }
+        }
+        if (repairRequested && ok && failingTest && EDIT_TOOLS.has(call.name)) {
+          const command = failingTest.command;
+          const testCall: ToolCall = { name: "run_shell", args: { command }, raw: "" };
+          emit({ type: "notice", message: "編集後に失敗していたテストを再実行しています。" });
+          emit({ type: "tool_start", name: "run_shell", args: testCall.args });
+          const checked = await this.invoke(testCall, tools);
+          const code = checked.ok ? shellExitCode(checked.text) : undefined;
+          const passed = code === 0;
+          emit({ type: "tool_end", name: "run_shell", result: checked.text, ok: passed });
+          const result = checked.ok && code !== undefined
+            ? `編集後のテストは${passed ? "通りました" : "まだ失敗しています"}。\n${checked.text}`
+            : `編集後のテストを確認できませんでした。\n${checked.text}`;
+          this.messages.push({ role: "tool", toolName: "test_check", content: result });
+          if (passed) failingTest = undefined;
+          else if (code !== undefined) failingTest = { command, output: checked.text };
+        }
+        if (ok && MUTATING_TOOLS.has(call.name)
+          && !(call.name === "run_shell" && testCommand(call.args.command))) repeats.clear();
         if (ok && (call.name === "read_file" || call.name === "edit_json") && typeof call.args.path === "string") {
           this.lastReadPath = call.args.path;
           jsonRelevant = /\.json$/i.test(call.args.path);
@@ -332,6 +486,11 @@ export class Agent {
       }
     }
 
+    if (repairRequested && failingTest) {
+      const answer = `修正を完了できませんでした。テストはまだ失敗しています。\n${failingTest.output.slice(-1200)}`;
+      this.messages.push({ role: "assistant", content: answer });
+      emit({ type: "assistant", text: answer });
+    }
     emit({ type: "done", reason: "max_steps" });
   }
 
@@ -374,11 +533,12 @@ export class Agent {
    * 本物のコーディングエージェントはここで要約・ファイル再読込・重要度判定をする。
    * 「賢くする」の主戦場その2。
    */
-  private trimContext(emit: (e: AgentEvent) => void): void {
+  private trimContext(emit: (e: AgentEvent) => void, provider: Provider): void {
     const size = (): number => this.messages.reduce((n, m) => n + m.content.length, 0);
+    const budget = this.contextBudgetOverride ?? provider.contextBudget ?? 60_000;
     let dropped = 0;
     // 古いターンをまとめて外し、直近の依頼を必ず残す。
-    while (size() > this.contextBudget && this.messages.length > 4) {
+    while (size() > budget && this.messages.length > 4) {
       const nextTurn = this.messages.findIndex((message, index) => index > 0 && message.role === "user");
       if (nextTurn > 0) {
         this.messages.splice(0, nextTurn);

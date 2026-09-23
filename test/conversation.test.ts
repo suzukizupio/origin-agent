@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Agent } from "../src/agent.ts";
 import { formatToolCall } from "../src/protocol.ts";
-import { resolveProvider } from "../src/providers/index.ts";
+import { resolveProvider, resolveProviderSelection } from "../src/providers/index.ts";
 import type { AgentEvent, Provider, Tool } from "../src/types.ts";
 
 test("chat: 会話が次の発話へ渡り、作業ディレクトリの情報は渡らない", async () => {
@@ -70,6 +70,24 @@ test("auto: インストール済みのモデルを選び、接続できない�
   assert.equal((await resolveProvider("auto")).name, "rule");
   // 明示したモデルを、黙って rule にすり替えない。
   assert.equal((await resolveProvider("auto", "chosen:1b")).name, "ollama:chosen:1b");
+});
+
+test("auto: 7B があれば修正用に用意し、明示したモデルは変更しない", async (t) => {
+  const mock = t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ models: [
+    { name: "qwen2.5-coder:3b" }, { name: "qwen2.5-coder:7b" },
+  ] })));
+  const automatic = await resolveProviderSelection("auto");
+  assert.equal(automatic.provider.name, "ollama:qwen2.5-coder:3b");
+  assert.equal(automatic.repairProvider?.name, "ollama:qwen2.5-coder:7b");
+  assert.equal(mock.mock.callCount(), 1);
+
+  const explicit = await resolveProviderSelection("ollama", "qwen2.5-coder:3b");
+  assert.equal(explicit.provider.name, "ollama:qwen2.5-coder:3b");
+  assert.equal(explicit.repairProvider, undefined);
+  assert.equal(mock.mock.callCount(), 1);
+
+  mock.mock.mockImplementation(async () => new Response(JSON.stringify({ models: [{ name: "qwen2.5-coder:3b" }] })));
+  assert.equal((await resolveProviderSelection("auto")).repairProvider, undefined);
 });
 
 test("context: 資料が増えても直近の依頼と最後のツール結果を残す", async () => {
