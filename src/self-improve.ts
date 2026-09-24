@@ -10,7 +10,9 @@ import type { AgentEvent, Provider, Tool } from "./types.ts";
 
 export function isEditableSourcePath(path: unknown): path is string {
   if (typeof path !== "string" || path.includes("\0") || isAbsolute(path)) return false;
-  const parts = path.replaceAll("\\", "/").split("/");
+  const normalized = path.replaceAll("\\", "/");
+  if (normalized === "src/self-improve.ts" || normalized === "src/sandbox-eval.ts") return false;
+  const parts = normalized.split("/");
   return parts.length >= 2 && parts[0] === "src"
     && parts.every((part) => part !== "" && part !== "." && part !== "..");
 }

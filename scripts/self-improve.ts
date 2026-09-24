@@ -109,6 +109,7 @@ async function main(): Promise<void> {
   if (!goal || goal.length > 8_000) throw new Error("改善目標は1〜8000文字で指定してください。");
   const repo = await git(process.cwd(), "rev-parse", "--show-toplevel");
   if (await git(repo, "status", "--porcelain")) throw new Error("元の作業ツリーに変更があります。先にコミットまたは整理してください。");
+  const baseCommit = await git(repo, "rev-parse", "HEAD");
   await localModel(options.model);
   const outputDir = join(repo, ".origin-agent", "proposals");
   await mkdir(outputDir, { recursive: true });
@@ -138,7 +139,7 @@ async function main(): Promise<void> {
         }
         const patch = await git(safeCandidate, "diff", "--binary", "--", "src");
         if (!patch) {
-          await writeFile(reportPath, `${JSON.stringify({ status: "差分なし", goal, model: options.model, events }, null, 2)}\n`, "utf8");
+          await writeFile(reportPath, `${JSON.stringify({ status: "差分なし", baseCommit, goal, model: options.model, events }, null, 2)}\n`, "utf8");
           console.log(`  差分なし。操作履歴: ${reportPath}`);
           continue;
         }
@@ -146,13 +147,13 @@ async function main(): Promise<void> {
         const patchPath = join(outputDir, `${name}.patch`);
         await writeFile(patchPath, `${patch}\n`, "utf8");
         await writeFile(reportPath, `${JSON.stringify({
-          status: "未検証", goal, model: options.model, changed, events,
+          status: "未検証", baseCommit, goal, model: options.model, changed, events,
           warning: "候補コードは実行・採点・採用していません。",
         }, null, 2)}\n`, "utf8");
         console.log(`  未検証の修正案: ${patchPath}`);
       } catch (error) {
         await writeFile(reportPath, `${JSON.stringify({
-          status: "失敗", goal, model: options.model,
+          status: "失敗", baseCommit, goal, model: options.model,
           error: error instanceof Error ? error.message : String(error), events,
         }, null, 2)}\n`, "utf8");
         throw error;

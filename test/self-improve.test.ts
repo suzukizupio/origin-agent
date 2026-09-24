@@ -14,7 +14,7 @@ test("自己改修の候補は src の既存ファイルだけ変更できる", 
   await writeFile(join(root, "src", "a.js"), "export const value = 1;\n");
   await writeFile(join(root, "test", "a.test.js"), "const expected = 1;\n");
   assert.equal(isEditableSourcePath("src/a.js"), true);
-  for (const path of ["test/a.test.js", "src/../test/a.test.js", "src\\..\\test\\a.test.js", "C:\\tmp\\a.js"]) {
+  for (const path of ["test/a.test.js", "src/../test/a.test.js", "src\\..\\test\\a.test.js", "C:\\tmp\\a.js", "src/self-improve.ts", "src/sandbox-eval.ts"]) {
     assert.equal(isEditableSourcePath(path), false, path);
   }
   assert.equal(proposalTools.some((tool) => tool.name === "run_shell" || tool.name.startsWith("web_")), false);

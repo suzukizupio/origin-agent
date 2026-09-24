@@ -173,7 +173,7 @@ async function main(): Promise<void> {
   stdout.write(
     [
       "",
-      c.bold("origin-agent") + c.dim(" v0.9.0"),
+      c.bold("origin-agent") + c.dim(" v0.10.0"),
       c.dim(`  頭脳: ${agent.provider.name}`),
       c.dim(`  モード: ${agent.mode === "chat" ? "会話・ネット検索" : "コーディング"}`),
       c.dim(`  作業ルート: ${opts.root}`),
