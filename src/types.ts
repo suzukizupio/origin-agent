@@ -74,6 +74,8 @@ export type AgentEnv = {
   research?: boolean;
   /** 検索手順が終わり、今回の資料から回答する段階。 */
   researchAnswerOnly?: boolean;
+  /** 直前の回答の短縮・整形だけを行う。新しい検索や事実確認ではない。 */
+  replyRewrite?: boolean;
 };
 
 export type Provider = {

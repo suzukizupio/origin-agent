@@ -9,6 +9,7 @@
     "practice": "node src/cli.ts --mode code --root examples/json-practice",
     "test": "node --test test/*.test.ts",
     "check:live": "node scripts/check-live.ts",
+    "check:chat": "node scripts/eval.ts --suite daily --offline --repeat 1",
     "check:research": "node scripts/check-research.ts",
     "check:code": "node scripts/check-code.ts",
     "check:growth": "node scripts/check-growth.ts",
