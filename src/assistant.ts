@@ -1,6 +1,6 @@
 import { Agent } from "./agent.ts";
 import { LearningStore, memoryKey } from "./learning.ts";
-import { researchRoute, type ResearchRoute, type ResearchTopic } from "./routing.ts";
+import { isReplyRewrite, researchRoute, type ResearchRoute, type ResearchTopic } from "./routing.ts";
 import type { AgentEvent, AgentMode } from "./types.ts";
 
 type Turn = { question: string; answer: string; provider: string; mode: AgentMode };
@@ -29,6 +29,7 @@ export class Assistant {
   readonly store: LearningStore;
   private sessionName: string | undefined;
   private lastTurn: Turn | undefined;
+  private canRewrite = false;
   private researchTopic: ResearchTopic | undefined;
 
   constructor(agent: Agent, store: LearningStore) { this.agent = agent; this.store = store; }
@@ -37,11 +38,15 @@ export class Assistant {
     this.agent.reset();
     this.sessionName = undefined;
     this.lastTurn = undefined;
+    this.canRewrite = false;
     this.researchTopic = undefined;
   }
 
   async run(input: string, emit: (event: AgentEvent) => void): Promise<void> {
     const line = input.trim();
+    // コマンドの応答や失敗を挟んだ後に、古い回答を「直前」と取り違えない。
+    const previous = this.canRewrite ? this.lastTurn : undefined;
+    this.canRewrite = false;
     const say = (text: string) => { emit({ type: "assistant", text }); emit({ type: "done", reason: "answered" }); };
     const remember = line.match(/^\/remember\s+(\S+)\s+([\s\S]+)$/);
     const natural = naturalMemory(line);
@@ -97,7 +102,10 @@ export class Assistant {
       const saved = (await this.store.read()).memories.find((m) => m.key === "呼び方");
       const name = this.sessionName ?? saved?.value;
       const answer = name ? `${name}さんとお呼びします。` : "今はお名前が分かりません。呼んでほしい名前を教えてください。";
+      // モデルを通さない回答も、次の「それ」などが参照できるよう会話に残す。
+      this.agent.messages.push({ role: "user", content: line }, { role: "assistant", content: answer });
       this.lastTurn = { question: line, answer, provider: this.agent.provider.name, mode: this.agent.mode };
+      this.canRewrite = true;
       say(answer);
       return;
     }
@@ -106,7 +114,13 @@ export class Assistant {
     const query = line.startsWith("/search") ? line.slice(7).trim() : undefined;
     if (query === "") { say("例: /search みらい平駅 公式 時刻表"); return; }
     const question = query === undefined ? line : `ネットで調べて、日本語で短く答えてください: ${query}`;
-    const route: ResearchRoute = query === undefined ? researchRoute(line, this.agent.mode, this.researchTopic) : {
+    const rewriting = query === undefined && this.agent.mode === "chat" && isReplyRewrite(line);
+    const target = previous?.mode === this.agent.mode && previous.provider === this.agent.provider.name
+      ? previous : undefined;
+    const route: ResearchRoute = rewriting ? {
+      allowWeb: false, research: false, topic: this.researchTopic,
+      ...(!target ? { clarification: "言い換える直前の回答がありません。短くしたい文章を送ってください。" } : {}),
+    } : query === undefined ? researchRoute(line, this.agent.mode, this.researchTopic) : {
       allowWeb: true, research: true, firstCall: { name: "web_search", args: { query } },
     };
     this.researchTopic = route.topic;
@@ -117,7 +131,9 @@ export class Assistant {
       say(route.clarification);
       return;
     }
-    const knowledge = await this.store.context(question, this.agent.mode);
+    // 書き換え元に保存済みの別条件や過去の誤答を混ぜない。今回の形式指定を優先する。
+    const knowledge = rewriting ? { text: "", feedbackCount: 0 } : await this.store.context(question, this.agent.mode);
+    if (rewriting) emit({ type: "notice", message: "直前の回答をもとに言い換えます。新しい検索は行いません。" });
     if (knowledge.feedbackCount) emit({ type: "notice", message: `関連する感想 ${knowledge.feedbackCount} 件を参照します。` });
     if (route.firstCall && query === undefined) emit({ type: "notice", message: "確かな情報を確認するため、ネットで調べます。" });
     let answer = "";
@@ -127,7 +143,10 @@ export class Assistant {
       if (event.type === "assistant") answer = event.text;
       if (event.type === "done") answered = event.reason === "answered";
       emit(event);
-    }, route.firstCall, { ...route, knowledge: knowledge.text });
-    if (answered && answer) this.lastTurn = { question, answer, provider: this.agent.provider.name, mode: this.agent.mode };
+    }, route.firstCall, { ...route, knowledge: knowledge.text, rewriteSource: rewriting ? target?.answer : undefined });
+    if (answered && answer) {
+      this.lastTurn = { question, answer, provider: this.agent.provider.name, mode: this.agent.mode };
+      this.canRewrite = true;
+    }
   }
 }

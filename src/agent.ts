@@ -131,7 +131,7 @@ function checkResearchFetch(call: ToolCall, known: string[], fetched: Set<string
   ].filter((line) => line !== "").join("\n");
 }
 
-export type RunContext = { knowledge?: string; research?: boolean; allowWeb?: boolean; readSource?: boolean; additionalSearches?: string[]; topic?: { subjects: string[] }; comparison?: Comparison; focus?: string[] };
+export type RunContext = { rewriteSource?: string; knowledge?: string; research?: boolean; allowWeb?: boolean; readSource?: boolean; additionalSearches?: string[]; topic?: { subjects: string[] }; comparison?: Comparison; focus?: string[] };
 
 export type AgentOptions = {
   provider: Provider;
@@ -222,6 +222,23 @@ export class Agent {
     context: RunContext = {},
   ): Promise<void> {
     this.messages.push({ role: "user", content: input });
+    const rewriteSource = this.mode === "chat" ? context.rewriteSource : undefined;
+    const finishRewriteFailure = (text: string) => {
+      this.messages.push({ role: "assistant", content: text });
+      emit({ type: "assistant", text });
+      emit({ type: "done", reason: "stuck" });
+    };
+    if (rewriteSource !== undefined) {
+      // 文脈はこの2件だけに固定。履歴の整理で元の回答が消えても取り違えない。
+      const budget = this.contextBudgetOverride ?? this.provider.contextBudget ?? 60_000;
+      if (!rewriteSource.trim() || rewriteSource.length + input.length > budget) {
+        finishRewriteFailure("言い換え対象が空か、モデルに渡せる長さを超えています。必要な部分だけを貼って依頼してください。");
+        return;
+      }
+      // 呼び出し元が誤って検索を指定しても、この用途では実行しない。
+      context = { rewriteSource, allowWeb: false };
+      firstCall = undefined;
+    }
     this.outline = null;
     const repairRequested = this.mode === "code" && /直し(?:て|、|ください)|直して|修正(?:して|し|を)|解消(?:して|し)|通るよう|\bfix\b|\brepair\b/i.test(input);
     const noTests = /(?:テスト|test).{0,12}(?:実行しない|走らせない|runしない)|(?:実行しない|走らせない).{0,12}(?:テスト|test)|do not run tests/i.test(input);
@@ -232,8 +249,8 @@ export class Agent {
       emit({ type: "notice", message: `失敗テストの修正に ${activeProvider.name} を使います。応答には数分かかることがあります。` });
     }
     let research = context.research === true || firstCall?.name.startsWith("web_") === true;
-    const env = { ...await this.buildEnv(), knowledge: context.knowledge, research };
-    const availableTools = this.toolList.filter((tool) => context.allowWeb !== false || !tool.name.startsWith("web_"));
+    const env = { ...await this.buildEnv(), knowledge: context.knowledge, research, replyRewrite: rewriteSource !== undefined };
+    const availableTools = rewriteSource !== undefined ? [] : this.toolList.filter((tool) => context.allowWeb !== false || !tool.name.startsWith("web_"));
     // 専用の道具は対象が分かったときに渡す。使わないJSONの説明があるだけでも、
     // 小さいモデルは通常のコードをJSON風に引用してしまうことがあった。
     const namedFiles = env.outline.split("\n").filter((path) => path && !path.endsWith("/")
@@ -305,9 +322,9 @@ export class Agent {
       }
       const answerOnly = research && context.readSource === true && pendingCalls.length === 0 && evidence.some((text) => text.trim());
       // 今回の質問と資料に集中する。過去の推測や別の話題を答えの根拠にしない。
-      const completionMessages: Message[] = answerOnly
-        ? [...researchMessages, { role: "user", content: input }]
-        : this.messages;
+      const completionMessages: Message[] = rewriteSource !== undefined
+        ? [{ role: "assistant", content: rewriteSource }, { role: "user", content: input }]
+        : answerOnly ? [...researchMessages, { role: "user", content: input }] : this.messages;
       let raw: string;
       try {
         if (pendingCall !== undefined) {
@@ -315,7 +332,7 @@ export class Agent {
         } else {
           const startedWaiting = Date.now();
           let lastOutput = startedWaiting;
-          const preview = research || (repairRequested && failingTest)
+          const preview = research || rewriteSource !== undefined || (repairRequested && failingTest)
             ? () => {}
             : createTextPreview((text) => emit({ type: "assistant_delta", text }));
           const progress = setInterval(() => {
@@ -345,6 +362,7 @@ export class Agent {
         }
         if (error instanceof ProviderTimeoutError) {
           const answer = `${error.message}\nこの依頼は完了していません。時間のかかるローカルモデルでは、待ち時間を延ばすか、短い作業に分けて再試行してください。`;
+          if (rewriteSource !== undefined) { finishRewriteFailure(answer); return; }
           this.messages.push({ role: "assistant", content: answer });
           emit({ type: "assistant", text: answer });
           emit({ type: "done", reason: "answered" });
@@ -356,6 +374,11 @@ export class Agent {
 
       const parsed = parseToolCalls(raw);
       const calls = parsed.calls;
+      if (rewriteSource !== undefined && (calls.length > 0 || !parsed.say || /<\/?tool\b/i.test(raw))) {
+        this.messages.pop();
+        finishRewriteFailure("言い換えを完了できませんでした。モデルが文章以外の操作を要求したか、空の回答を返しました。検索やファイル操作は実行していません。");
+        return;
+      }
       // 小さいモデルは回答を示した後に、無関係な「確認できませんでした」を1行足すことがある。
       // 先に実質的な文がある場合だけ、その独立した行を除く。
       const say = research && calls.length === 0
@@ -582,7 +605,9 @@ export class Agent {
     const budget = this.contextBudgetOverride ?? provider.contextBudget ?? 60_000;
     let dropped = 0;
     // 古いターンをまとめて外し、直近の依頼を必ず残す。
-    while (size() > budget && this.messages.length > 4) {
+    // 1往復の長文＋次の質問（3件）でも予算を超える。件数ではなくターンで削る。
+    // 今回の依頼と最後のツール結果だけで超える場合は、内容を途中で切らず残す。
+    while (size() > budget && this.messages.length > 1) {
       const nextTurn = this.messages.findIndex((message, index) => index > 0 && message.role === "user");
       if (nextTurn > 0) {
         this.messages.splice(0, nextTurn);

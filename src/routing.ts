@@ -77,6 +77,13 @@ function topicRoute(subjects: string[], attribute: string, input: string): Resea
   };
 }
 
+/** 直前の返答の短縮・整形だけを判定する。新しい対象・条件・調査依頼は取り込まない。 */
+export function isReplyRewrite(input: string): boolean {
+  const text = input.trim().normalize("NFKC");
+  if (text.length > 120) return false;
+  return /^(?:(?:それ|これ|(?:その|前の|直前の|さっきの|今の)(?:回答|返答|説明))(?:を|は)?\s*)?(?:(?:もう少し|もっと)\s*)?(?:(?:短く|簡潔に|わかりやすく|分かりやすく|やさしく)(?:して|説明して|言い換えて|まとめて|答えて)|(?:箇条書き|表)(?:にして|でまとめて)|[1-9]\d?(?:文|行)で(?:まとめて|答えて|説明して))(?:ください)?[。！!？?\s]*$/.test(text);
+}
+
 /** モデルが検索を選び損ねやすい質問を補助する。個人の記憶は検索語に混ぜない。 */
 export function researchRoute(input: string, mode: AgentMode, previous?: ResearchTopic): ResearchRoute {
   const none: ResearchRoute = { allowWeb: true, research: false };

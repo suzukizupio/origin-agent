@@ -30,6 +30,8 @@ export type Task = {
   id: string;
   title: string;
   mode: AgentMode;
+  /** 日常会話だけを、ファイル操作やWeb検索なしで測る評価セット */
+  suite?: "daily";
   /** assistant: 記憶と検索判断を通す / agent: ループだけを直接見る */
   via: "assistant" | "agent";
   /** 使わせるツールを名前で絞る。省略時はモードの既定 */
@@ -296,7 +298,79 @@ const codeTasks: Task[] = [
   },
 ];
 
+/** 日常会話の小さな回帰課題。合格はこの条件だけの確認で、意味全体の採点ではない。 */
+const dailyTasks: Task[] = [
+  {
+    id: "daily-rewrite", title: "直前の回答を内容を保って短く整える", mode: "chat", via: "assistant", suite: "daily", tools: [], maxSteps: 1,
+    turns: [
+      { text: "連絡文を作ってください。読書会は金曜日の14時、図書室で開催します。持ち物は本です。これ以外の情報は足さないでください。" },
+      { text: "それを2行でまとめて" },
+    ],
+    check: ({ answer }) => {
+      assert.equal(answer.trim().split(/\r?\n/).filter((line) => line.trim()).length, 2);
+      assert.ok(answer.length <= 140);
+      for (const pattern of [/金曜/, /14時/, /図書室/, /本/]) assert.match(answer.normalize("NFKC"), pattern);
+    },
+  },
+  {
+    id: "daily-followup", title: "前の発話にある候補を参照する", mode: "chat", via: "assistant", suite: "daily", tools: [], maxSteps: 1,
+    turns: [
+      { text: "勉強の候補Aは朝に読書10分、候補Bは夜に復習20分です。まず内容を確認してください。" },
+      { text: "そのうち20分のものについて、候補名と何をするかを一文で答えてください。" },
+    ],
+    check: ({ answer }) => {
+      assert.match(answer.normalize("NFKC"), /候補B/);
+      assert.match(answer, /復習/);
+      assert.doesNotMatch(answer.normalize("NFKC"), /候補A/);
+    },
+  },
+  {
+    id: "daily-update", title: "変更された条件を優先する", mode: "chat", via: "assistant", suite: "daily", tools: [], maxSteps: 1,
+    turns: [
+      { text: "私が本を買う予算は5000円です。今は確認だけしてください。" },
+      { text: "予算を2000円に変更します。" },
+      { text: "今の予算はいくらですか？金額だけ答えてください。" },
+    ],
+    check: ({ answer }) => assert.match(answer.normalize("NFKC").replace(/[\s,、。]/g, ""), /^2000円$/),
+  },
+  {
+    id: "daily-correction", title: "ユーザーの訂正を反映する", mode: "chat", via: "assistant", suite: "daily", tools: [], maxSteps: 1,
+    turns: [
+      { text: "私の打ち合わせは水曜日です。まず確認だけしてください。" },
+      { text: "訂正します。打ち合わせは木曜日でした。" },
+      { text: "私の打ち合わせは何曜日ですか？曜日だけ答えてください。" },
+    ],
+    check: ({ answer }) => assert.match(answer.replace(/[\s。]/g, ""), /^木曜(?:日)?$/),
+  },
+  {
+    id: "daily-summary", title: "渡した文章を指定の長さで要約する", mode: "chat", via: "assistant", suite: "daily", tools: [], maxSteps: 1,
+    turns: [{ text: "次の連絡文を、日時・場所と持ち物の2点に分けて、2行の箇条書きだけで短くまとめてください。\n連絡文：勉強会は水曜日の10時に会議室Aで行います。持ち物はノートです。会場では参加者同士が交流する予定です。" }],
+    check: ({ answer }) => {
+      const lines = answer.trim().split(/\r?\n/).filter((line) => line.trim());
+      assert.equal(lines.length, 2, "2行でまとめること");
+      assert.ok(lines.every((line) => /^\s*(?:[-*・]|\d+[.)、])\s*/.test(line)), "箇条書きであること");
+      assert.ok(answer.length <= 140, "短くまとめること");
+      for (const pattern of [/水曜/, /10時/, /会議室A/, /ノート/]) assert.match(answer.normalize("NFKC"), pattern);
+    },
+  },
+  {
+    id: "daily-missing-info", title: "資料にない情報を作らない", mode: "chat", via: "assistant", suite: "daily", tools: [], maxSteps: 1,
+    turns: [{ text: "次のメモだけを根拠に、勉強会の責任者の氏名を答えてください。氏名が書かれていなければ『記載なし』だけと答えてください。\nメモ：勉強会は木曜日、会議室Cで開催します。" }],
+    check: ({ answer }) => assert.match(answer.replace(/[\s。「」『』]/g, ""), /^記載なし$/),
+  },
+  {
+    id: "daily-clarify", title: "対象が不明なら推測せず確認する", mode: "chat", via: "assistant", suite: "daily", tools: [], maxSteps: 1,
+    turns: [{ text: "それを比較してください。" }],
+    check: ({ answer }) => {
+      assert.match(answer, /何|どの|どれ|対象|比較するもの/);
+      assert.match(answer, /[?？]|教えて|知らせて|示して|提示|指定|分かりません|わかりません|不明/);
+      assert.ok(answer.length <= 200, "比較を捏造せず短く確認すること");
+    },
+  },
+];
+
 export const tasks: Task[] = [
+  ...dailyTasks,
   {
     id: "port-change",
     title: "設定値を1つだけ変更する",

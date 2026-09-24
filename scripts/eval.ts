@@ -37,6 +37,7 @@ type Report = {
   startedAt: string;
   completed?: boolean;
   provider: string;
+  suite?: "all" | "daily";
   repeat: number;
   /** 1回の応答を待つ上限（秒）。条件が違う結果同士を比べていないか確かめるために残す。古い結果には無い */
   timeoutSec?: number;
@@ -51,6 +52,8 @@ type Options = {
   model: string | undefined;
   only: string[];
   offline: boolean;
+  suite: "all" | "daily";
+  list: boolean;
   holdout: boolean;
   out: string | undefined;
   compare: string | undefined;
@@ -61,9 +64,9 @@ type Options = {
 function parseArgs(argv: string[]): Options {
   const opts: Options = {
     repeat: 3, provider: "auto", model: undefined, only: [],
-    offline: false, holdout: false, out: undefined, compare: undefined, min: 0, timeoutSec: undefined,
+    offline: false, suite: "all", list: false, holdout: false, out: undefined, compare: undefined, min: 0, timeoutSec: undefined,
   };
-  const needsValue = ["--repeat", "--provider", "--model", "--only", "--out", "--compare", "--min", "--timeout"];
+  const needsValue = ["--repeat", "--provider", "--model", "--only", "--out", "--compare", "--min", "--timeout", "--suite"];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? "";
     const next = argv[i + 1];
@@ -79,6 +82,12 @@ function parseArgs(argv: string[]): Options {
     else if (arg === "--min") opts.min = Number(argv[++i]);
     else if (arg === "--timeout") opts.timeoutSec = Number(argv[++i]);
     else if (arg === "--offline") opts.offline = true;
+    else if (arg === "--suite") {
+      const suite = argv[++i];
+      if (suite !== "all" && suite !== "daily") throw new Error("--suite は all または daily です。");
+      opts.suite = suite;
+    }
+    else if (arg === "--list") opts.list = true;
     else if (arg === "--holdout") opts.holdout = true;
     else if (arg === "--help" || arg === "-h") {
       console.log([
@@ -88,7 +97,9 @@ function parseArgs(argv: string[]): Options {
         "  --provider <名前>  auto | rule | ollama。既定は auto",
         "  --model <名前>     モデル名",
         "  --only <id,id>     指定した課題だけ走らせる",
-        "  --offline          ネットを使う課題を除外する",
+        "  --offline          ネットを使う課題を除外する（Ollamaへの接続は必要）",
+        "  --suite daily      日常会話の課題だけを実行。Web・ファイル・シェルのツールは使わない",
+        "  --list             選択した課題を表示して終了。モデルへの接続・採点・保存は行わない",
         "  --holdout          holdout の課題だけを走らせ、合計だけを表示する。骨格を直し終わってから使う",
         "  --out <パス>       成績・操作履歴をJSONで保存する（課題ごとに途中保存）",
         "  --compare <パス>   保存した結果と比べて増減を表示する",
@@ -160,6 +171,14 @@ async function runOnce(task: Task, provider: Provider): Promise<Attempt> {
       else await built.agent.run(turn.text, collect);
     }
 
+    if (task.suite === "daily") {
+      for (const turn of trace) {
+        if (!turn.events.some((event) => event.type === "done" && event.reason === "answered")
+          || turn.events.some((event) => event.type === "tool_start")) {
+          throw new Error("日常会話は各ターンでツールを使わず回答を完了すること");
+        }
+      }
+    }
     const result: TaskResult = {
       answer,
       events,
@@ -224,19 +243,23 @@ async function main(): Promise<void> {
     process.env.ORIGIN_OLLAMA_TIMEOUT_MS = String(Math.round(opts.timeoutSec * 1000));
   }
   const timeoutSec = Number(process.env.ORIGIN_OLLAMA_TIMEOUT_MS ?? 120_000) / 1000;
-  const provider = await resolveProvider(opts.provider, opts.model);
-  if (provider.name === "rule") {
-    throw new Error("採点には言語モデルが要ります。ollama を起動してから実行してください。");
-  }
-
   const selected = allTasks.filter((task) => {
+    if (opts.suite === "daily" && task.suite !== "daily") return false;
     if (opts.only.length > 0) {
       if (!opts.only.includes(task.id)) return false;
     } else if ((task.holdout === true) !== opts.holdout) return false;
     if (opts.offline && task.network === true) return false;
     return true;
   });
-  if (selected.length === 0) throw new Error("走らせる課題がありません。--only の指定を確認してください。");
+  if (selected.length === 0) throw new Error("走らせる課題がありません。--suite・--only・--holdout の指定を確認してください。");
+  if (opts.list) {
+    console.log(selected.map((task) => `${task.id}: ${task.title}`).join("\n"));
+    return;
+  }
+  const provider = await resolveProvider(opts.provider, opts.model);
+  if (provider.name === "rule") {
+    throw new Error("採点には言語モデルが要ります。ollama を起動してから実行してください。");
+  }
 
   const previous = opts.compare === undefined
     ? undefined
@@ -245,8 +268,15 @@ async function main(): Promise<void> {
 
   console.log(`頭脳: ${provider.name}（応答待ち上限 ${timeoutSec}秒）`);
   console.log(`課題 ${selected.length}件 × ${opts.repeat}回 = ${selected.length * opts.repeat}回の試行`);
+  if (opts.suite === "daily") {
+    console.log("日常会話の限定的な条件チェックです。意味全体の正しさ・実用性は、保存した回答も読んで確認してください。");
+    console.log("Web検索・ファイル操作・シェル実行なし。普段の記憶とは別の一時データを使います。");
+  }
   if (previous) {
     console.log(`比較対象: ${previous.provider}（${previous.passed}/${previous.total}）`);
+    if (JSON.stringify(previous.tasks.map((task) => task.id).sort()) !== JSON.stringify(selected.map((task) => task.id).sort())) {
+      console.log("  ! 課題の集合が違います。合計成功率は直接比較せず、共通課題を確認してください。");
+    }
     if (previous.timeoutSec !== undefined && previous.timeoutSec !== timeoutSec) {
       console.log(`  ! 比較対象の応答待ち上限は ${previous.timeoutSec}秒でした。条件が違います。`);
     }
@@ -257,6 +287,7 @@ async function main(): Promise<void> {
     startedAt: new Date().toISOString(),
     completed: false,
     provider: provider.name,
+    suite: opts.suite,
     repeat: opts.repeat,
     timeoutSec,
     passed: 0,
