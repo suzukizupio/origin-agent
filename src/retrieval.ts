@@ -7,21 +7,35 @@ export function searchExcerpts(output: string): { url: string; text: string }[] 
   });
 }
 
-export function rankSources(output: string, query: string): string[] {
+export function rankSources(output: string, query: string, organization?: string): string[] {
   const terms = query.split(/\s+/).map((term) => term === "何地方" ? "地方" : term).filter((term) => term && !/^(公式|概要)$/.test(term));
   const subject = terms[0]?.replace(/[都府県]$/, "") ?? "";
+  const brand = organization?.replace(/^(?:株式会社|有限会社|合同会社)|(?:株式会社|有限会社|合同会社)$/g, "") ?? "";
   const blocks = output.split(/(?=^\d+\. )/m);
+  // 本体サイトのトップページと会社概要が同じ検索結果にあれば、そのドメインを優先する。
+  const companyHost = brand ? blocks.flatMap((block) => {
+    const url = block.match(/^(?:URL: )?(https?:\/\/\S+)/m)?.[1];
+    if (!url || !block.split("\n")[0]?.includes(brand)) return [];
+    try { const parsed = new URL(url); return parsed.pathname === "/" ? [parsed.hostname] : []; } catch { return []; }
+  })[0] : undefined;
   return blocks.flatMap((block, index) => {
     const url = block.match(/^(?:URL: )?(https?:\/\/\S+)/m)?.[1];
     if (!url || /\.pdf(?:[?#]|$)/i.test(url)) return [];
     let official = false;
-    try { official = /\.(lg|go)\.jp$/.test(new URL(url).hostname); } catch { return []; }
+    let path = "";
+    let host = "";
+    try { const parsed = new URL(url); host = parsed.hostname; official = /\.(lg|go)\.jp$/.test(host); path = parsed.pathname; } catch { return []; }
     const title = block.split("\n")[0] ?? "";
     const snippet = block.match(/^抜粋: (.*)$/m)?.[1] ?? "";
     const relevant = terms.length < 2 || terms.slice(1).some((term) => title.includes(term) || snippet.includes(term));
+    const companyProfile = brand && title.includes(brand) && /(?:about|company|corporate|profile|outline|gaiyou)/i.test(path);
+    const companyHome = brand && title.includes(brand) && /^\/?$/.test(path);
     const score = (official ? relevant ? 6 : 1 : 0) + (subject && title.includes(subject) ? 6 : 0)
       + (subject && snippet.includes(subject) ? 4 : 0)
-      + terms.slice(1).reduce((sum, term) => sum + (title.includes(term) ? 3 : 0) + (snippet.includes(term) ? 3 : 0), 0);
+      + terms.slice(1).reduce((sum, term) => sum + (title.includes(term) ? 3 : 0) + (snippet.includes(term) ? 3 : 0), 0)
+      + (companyProfile ? 18 : companyHome ? 9 : 0)
+      + (companyHost && host === companyHost ? 20 : 0)
+      - (organization && /\/(?:archives|jobs?|recruit)\b/i.test(path) ? 5 : 0);
     return [{ url, score, index }];
   }).sort((a, b) => b.score - a.score || a.index - b.index).map((item) => item.url);
 }

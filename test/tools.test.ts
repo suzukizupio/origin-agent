@@ -599,23 +599,6 @@ test("web_fetch: http/https 以外は拒否する", async () => {
   await assert.rejects(() => webFetchTool.run({ url: "これはURLではない" }, ctx), /URL として解釈できません/);
 });
 
-test("web_fetch: 確認を拒否したら通信しない", async () => {
-  let called = false;
-  const original = globalThis.fetch;
-  globalThis.fetch = (() => {
-    called = true;
-    throw new Error("通信してはいけない");
-  }) as typeof fetch;
-  try {
-    const ctx: ToolContext = { root: process.cwd(), confirm: async () => false };
-    const result = await webFetchTool.run({ url: "https://example.com" }, ctx);
-    assert.match(result, /拒否/);
-    assert.equal(called, false);
-  } finally {
-    globalThis.fetch = original;
-  }
-});
-
 test("edit_file: 確認を拒否したらファイルは変わらない", async () => {
   const fx = await fixture(false);
   try {

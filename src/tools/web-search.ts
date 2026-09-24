@@ -37,7 +37,7 @@ export function parseSearchResults(html: string, limit = 5): SearchResult[] {
 export const webSearchTool: Tool = {
   name: "web_search",
   description: "インターネットをキーワードで検索し、ページ名・URL・抜粋を返す。最新情報や調べものに使う",
-  destructive: true,
+  destructive: false,
   params: [
     { name: "query", type: "string", required: true, description: "検索キーワード。日本語も使える" },
     { name: "limit", type: "number", required: false, description: "結果の件数（1〜5、既定3）" },
@@ -51,8 +51,10 @@ export const webSearchTool: Tool = {
     if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 5) {
       throw new Error("limit は 1〜5 の整数で指定してください。");
     }
-    if (!await ctx.confirm(`DuckDuckGo に検索語を送信します: ${query}\n検索してよろしいですか？`)) {
-      return "ユーザーが検索を拒否しました。検索は実行していません。";
+    // 公開情報の検索は自動で進める。個人情報やローカルパスらしい語だけ確認する。
+    if (/(?:[A-Z]:\\|\\\\|\/Users\/|\/home\/|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|(?:api[_ -]?key|access[_ -]?token|password|パスワード)\s*[:：=])/i.test(query)
+      && !await ctx.confirm(`検索語に個人情報や秘密情報が含まれる可能性があります: ${query}\nDuckDuckGo に送信してよろしいですか？`)) {
+      return "ユーザーが検索語の送信を拒否しました。検索は実行していません。";
     }
     const url = new URL("https://html.duckduckgo.com/html/");
     url.searchParams.set("q", query);

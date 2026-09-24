@@ -5,25 +5,48 @@
 // 学習と違って即座に効き、間違っていればその場で直せる。
 
 import type { Tool } from "../types.ts";
+import { isIP } from "node:net";
 
 const TIMEOUT_MS = 20_000;
 const DEFAULT_MAX_CHARS = 8_000;
 
-export async function fetchWebPage(url: URL): Promise<Response> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await fetch(url, {
-        redirect: "follow",
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-        headers: { "user-agent": "origin-agent/0.2 (+local learning project)" },
-      });
-    } catch (error) {
-      // 一時的な接続切断だけ1回再試行する。HTTPエラーや認証画面は再試行しない。
-      if (attempt === 0 && error instanceof TypeError) continue;
-      const reason = error instanceof Error && error.name === "TimeoutError" ? "タイムアウト" : "接続失敗";
-      throw new Error(`Webへの${reason}で取得できませんでした。通信状態を確認し、時間を置いて試してください。`);
-    }
+function publicWebUrl(url: URL): void {
+  const hostname = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (!/^https?:$/.test(url.protocol) || url.username || url.password || !hostname
+    || hostname === "localhost" || hostname.endsWith(".localhost")
+    || hostname.endsWith(".local") || hostname.endsWith(".internal")
+    || !hostname.includes(".") || isIP(hostname)) {
+    throw new Error("公開された http/https のドメインだけ取得できます。ローカルアドレス・IPアドレス・認証情報付きURLは扱いません。");
   }
+}
+
+export async function fetchWebPage(url: URL): Promise<Response> {
+  let current = url;
+  for (let redirects = 0; redirects <= 5; redirects++) {
+    publicWebUrl(current);
+    let response: Response | undefined;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        response = await fetch(current, {
+          redirect: "manual",
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+          headers: { "user-agent": "origin-agent/0.2 (+local learning project)" },
+        });
+        break;
+      } catch (error) {
+        // 一時的な接続切断だけ1回再試行する。HTTPエラーや認証画面は再試行しない。
+        if (attempt === 0 && error instanceof TypeError) continue;
+        const reason = error instanceof Error && error.name === "TimeoutError" ? "タイムアウト" : "接続失敗";
+        throw new Error(`Webへの${reason}で取得できませんでした。通信状態を確認し、時間を置いて試してください。`);
+      }
+    }
+    if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+    const location = response.headers.get("location");
+    await response.body?.cancel();
+    if (!location) throw new Error("転送先がないため取得できませんでした。");
+    current = new URL(location, current);
+  }
+  throw new Error("転送が多すぎるため取得を中断しました。");
 }
 
 const ENTITIES: Record<string, string> = {
@@ -109,8 +132,7 @@ export function htmlToText(html: string): { title: string | null; text: string }
 export const webFetchTool: Tool = {
   name: "web_fetch",
   description: "URL の内容を取得し、本文テキストとして返す。ドキュメントやエラーの調査に使う",
-  // 外部サーバーへの送信なので、破壊的でなくても必ず確認を挟む
-  destructive: true,
+  destructive: false,
   params: [
     { name: "url", type: "string", required: true, description: "http/https の URL" },
     {
@@ -120,7 +142,7 @@ export const webFetchTool: Tool = {
       description: `返す本文の最大文字数。既定は ${DEFAULT_MAX_CHARS}`,
     },
   ],
-  async run(args, ctx) {
+  async run(args) {
     if (typeof args.url !== "string" || args.url.trim() === "") {
       throw new Error("url は必須の文字列です");
     }
@@ -139,11 +161,6 @@ export const webFetchTool: Tool = {
     if (!Number.isInteger(maxChars) || maxChars < 1 || maxChars > 20_000) {
       throw new Error("max_chars は 1〜20000 の整数で指定してください。");
     }
-
-    const ok = await ctx.confirm(
-      [`外部サーバーへアクセスします: ${url.href}`, "取得してよろしいですか？"].join("\n"),
-    );
-    if (!ok) return "ユーザーが取得を拒否しました。";
 
     const res = await fetchWebPage(url);
 

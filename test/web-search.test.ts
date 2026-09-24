@@ -23,9 +23,9 @@ test("web_search: 不正なURLと重複を除き、上限件数まで返す", ()
   assert.equal(parseSearchResults(fixture, 1).length, 1);
 });
 
-test("web_search: 拒否された場合と引数が不正な場合には通信しない", async (t) => {
+test("web_search: 秘密情報らしい検索語を拒否した場合と引数が不正な場合には通信しない", async (t) => {
   const mock = t.mock.method(globalThis, "fetch", async () => { throw new Error("通信してはいけない"); });
-  const result = await webSearchTool.run({ query: "AI" }, { ...ctx, confirm: async () => false });
+  const result = await webSearchTool.run({ query: "api_key=secret-value" }, { ...ctx, confirm: async () => false });
   assert.match(result, /実行していません/);
   await assert.rejects(() => webSearchTool.run({ query: " " }, ctx), /query/);
   await assert.rejects(() => webSearchTool.run({ query: "AI", limit: 99 }, ctx), /limit/);
@@ -39,9 +39,24 @@ test("web_search: 日本語の検索語を送信し、参照元を返す", async
     assert.equal(url.searchParams.get("q"), "型とは & 入門");
     return new Response(fixture);
   });
-  const result = await webSearchTool.run({ query: "型とは & 入門" }, ctx);
+  const result = await webSearchTool.run({ query: "型とは & 入門" }, { ...ctx, confirm: async () => { throw new Error("公開情報の検索は確認不要"); } });
   assert.match(result, /https:\/\/www.typescriptlang.org\/docs\//);
   assert.match(result, /検索結果の抜粋/);
+});
+
+test("web_fetch: 公開ページは確認なしで取得し、ローカルアドレスや転送先は拒否する", async (t) => {
+  const calls: string[] = [];
+  const mock = t.mock.method(globalThis, "fetch", async (input: string | URL | Request) => {
+    calls.push(String(input));
+    return new Response("<main><p>公開情報</p></main>", { headers: { "content-type": "text/html" } });
+  });
+  const noPrompt = { ...ctx, confirm: async () => { throw new Error("公開ページの取得は確認不要"); } };
+  assert.match(await webFetchTool.run({ url: "https://example.com/about" }, noPrompt), /公開情報/);
+  await assert.rejects(() => webFetchTool.run({ url: "http://127.0.0.1/private" }, noPrompt), /公開された/);
+  assert.equal(calls.length, 1);
+  mock.mock.mockImplementation(async () => new Response(null, { status: 302, headers: { location: "http://localhost/private" } }));
+  await assert.rejects(() => webFetchTool.run({ url: "https://example.com/redirect" }, noPrompt), /公開された/);
+  assert.equal(mock.mock.callCount(), 2);
 });
 
 test("web_search: 認証画面、HTTPエラー、形式変更を成功として扱わない", async (t) => {

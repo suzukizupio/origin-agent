@@ -537,7 +537,7 @@ export class Agent {
             const found = [...header.matchAll(/^(?:URL: )?(https?:\/\/[^\s（）]+)/gm)].map((match) => match[1]!);
             for (const url of found) sources.add(url);
             if (context.readSource && sourceReads < 1 + Math.min(context.additionalSearches?.length ?? 0, 1) && call.name === "web_search" && tools.some((tool) => tool.name === "web_fetch")) {
-              const ranked = rankSources(text, String(call.args.query ?? ""));
+              const ranked = rankSources(text, String(call.args.query ?? ""), context.topic?.organization);
               const preferred = [...ranked, ...found.filter((url) => !/\.pdf(?:[?#]|$)/i.test(url))].find((url) => !fetched.has(normalizeUrl(url)));
               if (preferred) {
                 pendingCalls.unshift({ name: "web_fetch", args: { url: preferred, max_chars: 6000 } });

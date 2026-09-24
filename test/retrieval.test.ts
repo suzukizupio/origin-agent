@@ -8,6 +8,14 @@ test("retrieval: 公式の総合一覧より、対象と項目を説明するペ
   assert.deepEqual(rankSources(output, "秋田県 面積 公式"), ["https://example.lg.jp/about.html", "https://example.go.jp/index.html"]);
 });
 
+test("retrieval: 会社の事業内容では企業紹介記事より会社概要を先に読む", () => {
+  const output = "1. ユアサクオビス | 住空間をトータルコーディネートする\nURL: https://www.yuasaquobis.co.jp/aboutus/\n抜粋: 快適で安心な空間づくり\n2. ユアサクオビス | 住空間をトータルコーディネートする\nURL: https://www.yuasaquobis.co.jp/\n抜粋: 快適で安心な空間づくり\n3. 会社概要 - ユアサクオビス株式会社\nURL: https://www.yq-ha.com/company/\n抜粋: ユアサクオビス株式会社の概要情報\n4. ユアサクオビス株式会社ってどんな会社？事業内容、仕事内容\nURL: https://jobhabase.com/archives/246807\n抜粋: ユアサクオビス株式会社の事業内容";
+  assert.deepEqual(rankSources(output, "ユアサクオビス株式会社 事業内容 公式", "ユアサクオビス株式会社"), [
+    "https://www.yuasaquobis.co.jp/aboutus/", "https://www.yuasaquobis.co.jp/",
+    "https://www.yq-ha.com/company/", "https://jobhabase.com/archives/246807",
+  ]);
+});
+
 test("retrieval: 本文の後半の関連箇所と前後の数値を抜き出し、省略を明示する", () => {
   const text = "案内の長い文章です。\n".repeat(500) + "2025年の統計\n市の面積\n1234.5平方キロメートル\n" + "連絡先です。\n".repeat(400);
   const excerpt = focusEvidence(text, ["面積"]);

@@ -71,6 +71,26 @@ test("会社概要が一行に整形されても、番号付き事業項目を�
   assert.match(await ask(assistant, `${company}はどんな会社ですか？`), /住宅設備.*建築資材/);
 });
 
+test("検索結果に公式の会社概要と企業紹介記事があれば、公式から待機なしで答える", async (t) => {
+  const dir = await temporaryDirectory(t);
+  const official = "https://www.yuasaquobis.co.jp/aboutus/";
+  const fetched: string[] = [];
+  const tools: Tool[] = [
+    { name: "web_search", description: "test", params: [], run: async () =>
+      `1. ユアサクオビス | 住空間をトータルコーディネートする\nURL: ${official}\n抜粋: 快適で安心な空間づくり\n2. ユアサクオビス株式会社ってどんな会社？事業内容、仕事内容\nURL: https://jobhabase.com/archives/246807\n抜粋: ユアサクオビス株式会社の事業内容` },
+    { name: "web_fetch", description: "test", params: [], run: async (args) => {
+      fetched.push(String(args.url));
+      return `${official}\n[Webページの参考資料]\n会社名\nユアサクオビス株式会社\n主な事業内容\n1. 住宅設備、住宅機器等の販売及び設置工事の請負\n2. 建築資材、土木資材等の販売及び設置工事の請負\n資本金\n353百万円`;
+    } },
+  ];
+  const provider: Provider = { name: "unused", complete: async () => { throw new Error("取得済みの会社概要から回答できるはず"); } };
+  const assistant = new Assistant(new Agent({ provider, tools, mode: "chat", ctx: { root: dir, confirm: async () => { throw new Error("公開情報で確認は不要"); } } }), new LearningStore(dir));
+  const answer = await ask(assistant, "ユアサクオビス株式会社とはどんな会社ですか？私が勤めています。");
+  assert.deepEqual(fetched, [official]);
+  assert.match(answer, /住宅設備.*建築資材/);
+  assert.match(answer, /yuasaquobis\.co\.jp\/aboutus/);
+});
+
 test("資料にない食品業・商品を捏造した回答は表示せず、資料に沿って再回答する", async (t) => {
   const dir = await temporaryDirectory(t);
   let calls = 0;
