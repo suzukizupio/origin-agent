@@ -12,8 +12,11 @@
 //   npm run eval -- --repeat 3 --compare 7b.json
 //   npm run eval -- --holdout --repeat 3   … 直し終わってから1回。合計だけを表示する
 
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { execFile } from "node:child_process";
+import { promisify, stripVTControlCharacters } from "node:util";
+import { ProviderTimeoutError } from "../src/types.ts";
 import { join, resolve, relative, isAbsolute } from "node:path";
 import { Agent } from "../src/agent.ts";
 import { Assistant } from "../src/assistant.ts";
@@ -27,7 +30,9 @@ import type { AgentEvent, Provider } from "../src/types.ts";
 const PREFIX = "origin-agent-eval-";
 
 type TurnTrace = { input: string; restart: boolean; events: AgentEvent[] };
-type Attempt = { ok: boolean; ms: number; reason?: string; trace: TurnTrace[] };
+const FAILURE_KINDS = ["timeout", "provider_error", "tool_error", "incomplete", "check_failed", "unknown"] as const;
+type FailureKind = typeof FAILURE_KINDS[number];
+type Attempt = { ok: boolean; ms: number; reason?: string; failureKind?: FailureKind; trace?: TurnTrace[] };
 type TaskReport = {
   id: string; title: string; passed: number; total: number; meanMs: number; failures: string[];
   tools?: string[];
@@ -38,6 +43,10 @@ type Report = {
   completed?: boolean;
   provider: string;
   suite?: "all" | "daily";
+  holdout?: boolean;
+  sourceCommit?: string;
+  sourceDirty?: boolean;
+  nodeVersion?: string;
   repeat: number;
   /** 1回の応答を待つ上限（秒）。条件が違う結果同士を比べていないか確かめるために残す。古い結果には無い */
   timeoutSec?: number;
@@ -56,6 +65,7 @@ type Options = {
   list: boolean;
   holdout: boolean;
   out: string | undefined;
+  review: string | undefined;
   compare: string | undefined;
   min: number;
   timeoutSec: number | undefined;
@@ -64,9 +74,9 @@ type Options = {
 function parseArgs(argv: string[]): Options {
   const opts: Options = {
     repeat: 3, provider: "auto", model: undefined, only: [],
-    offline: false, suite: "all", list: false, holdout: false, out: undefined, compare: undefined, min: 0, timeoutSec: undefined,
+    offline: false, suite: "all", list: false, holdout: false, out: undefined, review: undefined, compare: undefined, min: 0, timeoutSec: undefined,
   };
-  const needsValue = ["--repeat", "--provider", "--model", "--only", "--out", "--compare", "--min", "--timeout", "--suite"];
+  const needsValue = ["--repeat", "--provider", "--model", "--only", "--out", "--compare", "--min", "--timeout", "--suite", "--review"];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? "";
     const next = argv[i + 1];
@@ -78,6 +88,7 @@ function parseArgs(argv: string[]): Options {
     else if (arg === "--model") opts.model = argv[++i];
     else if (arg === "--only") opts.only = (argv[++i] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
     else if (arg === "--out") opts.out = resolve(argv[++i] ?? "");
+    else if (arg === "--review") opts.review = resolve(argv[++i] ?? "");
     else if (arg === "--compare") opts.compare = resolve(argv[++i] ?? "");
     else if (arg === "--min") opts.min = Number(argv[++i]);
     else if (arg === "--timeout") opts.timeoutSec = Number(argv[++i]);
@@ -103,6 +114,8 @@ function parseArgs(argv: string[]): Options {
         "  --holdout          holdout の課題だけを走らせ、合計だけを表示する。骨格を直し終わってから使う",
         "  --out <パス>       成績・操作履歴をJSONで保存する（課題ごとに途中保存）",
         "  --compare <パス>   保存した結果と比べて増減を表示する",
+        "  --review <パス>    保存済みJSONの失敗分類・質問・回答を表示。モデル接続・再採点・保存はしない",
+        "                     --compare / --only と併用可。holdoutは合計のみ",
         "  --min <0〜1>       全体の成功率がこれ未満なら終了コード1。既定は 0",
         "  --timeout <秒>     1回の応答を待つ上限。7B 以上を GPU なしで測るときは 300 程度に延ばす",
         "",
@@ -127,7 +140,7 @@ async function cleanup(parent: string, directory: string): Promise<void> {
 }
 
 function oneLine(text: string, max = 110): string {
-  const flat = text.replace(/\s+/g, " ").trim();
+  const flat = stripVTControlCharacters(text).replace(/[\x00-\x1f\x7f-\x9f]/g, " ").replace(/\s+/g, " ").trim();
   return flat.length > max ? `${flat.slice(0, max)}…` : flat;
 }
 
@@ -136,6 +149,14 @@ async function runOnce(task: Task, provider: Provider): Promise<Attempt> {
   const root = await mkdtemp(join(parent, PREFIX));
   const started = Date.now();
   const trace: TurnTrace[] = [];
+  let providerFailure: Error | undefined;
+  const trackedProvider: Provider = { ...provider, complete: async (...args) => {
+    try { return await provider.complete(...args); }
+    catch (error) {
+      providerFailure = error instanceof Error ? error : new Error(String(error));
+      throw error;
+    }
+  } };
   try {
     await task.setup?.(root);
 
@@ -143,7 +164,7 @@ async function runOnce(task: Task, provider: Provider): Promise<Attempt> {
     const store = new LearningStore(root);
     const build = () => {
       const agent = new Agent({
-        provider,
+        provider: trackedProvider,
         mode: task.mode,
         maxSteps: task.maxSteps ?? 6,
         tools: names === undefined ? allTools : allTools.filter((tool) => names.includes(tool.name)),
@@ -169,6 +190,8 @@ async function runOnce(task: Task, provider: Provider): Promise<Attempt> {
       };
       if (task.via === "assistant") await built.assistant.run(turn.text, collect);
       else await built.agent.run(turn.text, collect);
+      // Agentが時間切れを文章に変えても、採点では通常の回答と混同しない。
+      if (providerFailure) throw providerFailure;
     }
 
     if (task.suite === "daily") {
@@ -188,7 +211,12 @@ async function runOnce(task: Task, provider: Provider): Promise<Attempt> {
     await task.check(result);
     return { ok: true, ms: Date.now() - started, trace };
   } catch (error) {
-    return { ok: false, ms: Date.now() - started, reason: (error as Error).message, trace };
+    const failureKind: FailureKind = providerFailure instanceof ProviderTimeoutError ? "timeout"
+      : providerFailure ? "provider_error"
+      : trace.some((turn) => turn.events.some((event) => event.type === "tool_end" && !event.ok)) ? "tool_error"
+      : trace.some((turn) => turn.events.some((event) => event.type === "done" && event.reason !== "answered")) ? "incomplete"
+      : error instanceof Error && error.name === "AssertionError" ? "check_failed" : "unknown";
+    return { ok: false, ms: Date.now() - started, reason: error instanceof Error ? error.message : String(error), failureKind, trace };
   } finally {
     await cleanup(parent, root);
   }
@@ -236,8 +264,122 @@ function printTable(report: Report, previous: Report | undefined): void {
   }
 }
 
+/** 保存したレポートはコードとして扱わず、利用するフィールドと集計の整合性を検証する。 */
+async function readReport(path: string): Promise<Report> {
+  if ((await stat(path)).size > 20_000_000) throw new Error("評価JSONは20MB以内にしてください。");
+  const parsed: unknown = JSON.parse(await readFile(path, "utf8"));
+  const object = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
+  const count = (x: unknown): x is number => typeof x === "number" && Number.isSafeInteger(x) && x >= 0;
+  const duration = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x) && x >= 0;
+  const strings = (x: unknown): x is string[] => Array.isArray(x) && x.every((s) => typeof s === "string");
+  const fail = (): never => { throw new Error("評価JSONの形式または集計が不正です。"); };
+  if (!object(parsed) || typeof parsed.provider !== "string" || !count(parsed.passed) || !count(parsed.total)
+    || !count(parsed.repeat) || parsed.repeat < 1 || !Array.isArray(parsed.tasks) || parsed.tasks.length > 1000) fail();
+  const data = parsed as Record<string, unknown>;
+  for (const key of ["completed", "holdout", "sourceDirty"]) if (data[key] !== undefined && typeof data[key] !== "boolean") fail();
+  for (const key of ["sourceCommit", "nodeVersion"]) if (data[key] !== undefined && typeof data[key] !== "string") fail();
+  if (data.timeoutSec !== undefined && !duration(data.timeoutSec)) fail();
+  if (data.suite !== undefined && !["all", "daily"].includes(String(data.suite))) fail();
+  const ids = new Set<string>();
+  let passed = 0, total = 0;
+  for (const raw of data.tasks as unknown[]) {
+    if (!object(raw) || typeof raw.id !== "string" || !raw.id || ids.has(raw.id) || typeof raw.title !== "string"
+      || !count(raw.passed) || !count(raw.total) || raw.total < 1 || raw.passed > raw.total
+      || !duration(raw.meanMs) || !strings(raw.failures)) fail();
+    const task = raw as TaskReport;
+    ids.add(task.id); passed += task.passed; total += task.total;
+    if (task.tools !== undefined && !strings(task.tools)) fail();
+    if (task.attempts === undefined) continue; // 古い集計だけのレポートも読める。
+    if (!Array.isArray(task.attempts) || task.attempts.length !== task.total) fail();
+    let successes = 0;
+    for (const attempt of task.attempts) {
+      if (!object(attempt) || typeof attempt.ok !== "boolean" || !duration(attempt.ms)
+        || (attempt.reason !== undefined && typeof attempt.reason !== "string")
+        || (attempt.failureKind !== undefined && !FAILURE_KINDS.includes(attempt.failureKind))) fail();
+      if (attempt.ok) successes++;
+      if (attempt.trace === undefined) continue;
+      if (!Array.isArray(attempt.trace)) fail();
+      for (const turn of attempt.trace) {
+        if (!object(turn) || typeof turn.input !== "string" || !Array.isArray(turn.events)) fail();
+        for (const event of turn.events) {
+          if (!object(event) || typeof event.type !== "string") fail();
+          if (event.type === "assistant" && typeof event.text !== "string") fail();
+        }
+      }
+    }
+    if (successes !== task.passed) fail();
+  }
+  if (passed !== data.passed || total !== data.total) fail();
+  return parsed as Report;
+}
+
+function reviewReport(report: Report, previous: Report | undefined, only: string[]): void {
+  console.log(`保存済み評価: ${oneLine(report.provider)}  ${report.passed}/${report.total}`);
+  console.log("読み取り専用。再採点・モデル接続は行いません。分類は原因の断定ではなく、記録上の失敗種別です。");
+  if (report.completed !== true) console.log("注意: 途中の結果、または完了情報がない旧形式です。");
+  if (previous) {
+    for (const key of ["provider", "repeat", "timeoutSec", "suite", "nodeVersion", "sourceDirty"] as const) {
+      if (report[key] !== previous[key]) console.log(`比較条件に違い: ${key}`);
+    }
+    if (report.sourceCommit !== previous.sourceCommit) console.log("比較対象とコードのコミットが異なります。");
+    if (previous.completed !== true || report.completed !== true) console.log("完了していない結果のため、改善の判定には使わないでください。");
+    if (JSON.stringify(report.tasks.map((task) => task.id).sort()) !== JSON.stringify(previous.tasks.map((task) => task.id).sort())) {
+      console.log("課題の集合が違います。合計成功率を直接比較しないでください。");
+    }
+  }
+  // 既存のholdout結果はメタ情報がないのでIDでも検出し、質問や失敗理由を表示しない。
+  if ([report, previous].some((r) => r && (r.holdout || r.tasks.some((task) => /holdout/i.test(task.id))))) {
+    if (previous) console.log(`比較対象の合計: ${previous.passed}/${previous.total}`);
+    console.log("holdoutを含むため、課題名・失敗理由・会話は表示しません。");
+    return;
+  }
+  const selected = report.tasks.filter((task) => only.length === 0 || only.includes(task.id));
+  if (selected.length === 0 || only.some((id) => !selected.some((task) => task.id === id))) throw new Error("指定した課題が評価JSONにありません。");
+  const labels: Record<FailureKind, string> = { timeout: "モデル時間切れ", provider_error: "モデル通信・生成エラー", tool_error: "ツール失敗あり", incomplete: "未完了", check_failed: "採点条件不一致", unknown: "未分類（旧形式を含む）" };
+  const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}秒`;
+  let details = 0;
+  for (const task of [...selected].sort((a, b) => (b.total - b.passed) / b.total - (a.total - a.passed) / a.total)) {
+    console.log(`\n${oneLine(task.id)}: ${task.passed}/${task.total} 平均${seconds(task.meanMs)} — ${oneLine(task.title)}`);
+    const before = previous?.tasks.find((old) => old.id === task.id);
+    if (before) {
+      console.log(`  前回 ${before.passed}/${before.total} 平均${seconds(before.meanMs)}（少数試行の差は改善の証明ではありません）`);
+      if (JSON.stringify(task.tools) !== JSON.stringify(before.tools)) console.log("  注意: 渡したツールが異なります。");
+    }
+    if (!task.attempts) {
+      console.log("  試行の履歴なし。失敗種別・質問・回答は確認できません。");
+      if (task.failures.length) console.log(`  最後の理由: ${oneLine(task.failures.at(-1)!, 400)}`);
+      continue;
+    }
+    const failures = task.attempts.filter((attempt) => !attempt.ok);
+    for (const kind of FAILURE_KINDS) {
+      const n = failures.filter((attempt) => (attempt.failureKind ?? "unknown") === kind).length;
+      if (n) console.log(`  ${labels[kind]}: ${n}件`);
+    }
+    for (const ok of [true, false]) {
+      const group = task.attempts.filter((attempt) => attempt.ok === ok);
+      if (group.length) console.log(`  ${ok ? "成功" : "失敗"}時の平均: ${seconds(group.reduce((sum, a) => sum + a.ms, 0) / group.length)}`);
+    }
+    for (const attempt of failures.slice(0, 2)) {
+      if (details++ >= 10) break;
+      const turn = attempt.trace?.at(-1);
+      const answer = turn?.events.filter((event) => event.type === "assistant").at(-1);
+      console.log(`  理由: ${oneLine(attempt.reason ?? "記録なし", 400)}`);
+      console.log(`  最後の質問: ${oneLine(turn?.input ?? "記録なし", 400)}`);
+      console.log(`  最後の回答: ${oneLine(answer?.type === "assistant" ? answer.text : "記録なし", 400)}`);
+    }
+  }
+  console.log("\n詳細は各課題2件・全体10件まで。--only <課題ID> で絞れます。条件不一致を推理力不足と即断せず、元JSONの会話も確認してください。");
+}
+
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
+  if (opts.review) {
+    if (opts.out || opts.list || opts.model || opts.provider !== "auto") throw new Error("--review は --out・--list・--model・--provider と併用できません。");
+    const report = await readReport(opts.review);
+    if (opts.holdout) report.holdout = true;
+    reviewReport(report, opts.compare ? await readReport(opts.compare) : undefined, opts.only);
+    return;
+  }
   // プロバイダを作る前に設定する。ollama プロバイダはこの環境変数から待ち時間を読む
   if (opts.timeoutSec !== undefined) {
     process.env.ORIGIN_OLLAMA_TIMEOUT_MS = String(Math.round(opts.timeoutSec * 1000));
@@ -263,7 +405,7 @@ async function main(): Promise<void> {
 
   const previous = opts.compare === undefined
     ? undefined
-    : (JSON.parse(await readFile(opts.compare, "utf8")) as Report);
+    : await readReport(opts.compare);
   if (previous?.completed === false) throw new Error("比較対象は途中の採点結果です。完了した結果を指定してください。");
 
   console.log(`頭脳: ${provider.name}（応答待ち上限 ${timeoutSec}秒）`);
@@ -283,11 +425,20 @@ async function main(): Promise<void> {
   }
   console.log("");
 
+  let sourceCommit: string | undefined;
+  let sourceDirty: boolean | undefined;
+  try {
+    const run = promisify(execFile);
+    sourceCommit = (await run("git", ["rev-parse", "HEAD"], { timeout: 5000, windowsHide: true })).stdout.trim();
+    sourceDirty = !!(await run("git", ["status", "--porcelain"], { timeout: 5000, windowsHide: true })).stdout.trim();
+  } catch { /* Gitが無い作業場所でも採点できる。情報なしとして残す。 */ }
   const report: Report = {
     startedAt: new Date().toISOString(),
     completed: false,
     provider: provider.name,
     suite: opts.suite,
+    holdout: selected.some((task) => task.holdout),
+    sourceCommit, sourceDirty, nodeVersion: process.version,
     repeat: opts.repeat,
     timeoutSec,
     passed: 0,
@@ -346,4 +497,7 @@ holdout 合計 ${report.passed}/${report.total}${before}`);
   }
 }
 
-await main();
+await main().catch((error: unknown) => {
+  console.error(`エラー: ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
+});

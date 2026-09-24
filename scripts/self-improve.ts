@@ -125,8 +125,9 @@ async function main(): Promise<void> {
       const events: AgentEvent[] = [];
       let attached = false;
       try {
-        await git(repo, "worktree", "add", "--detach", safeCandidate, "HEAD");
+        await git(repo, "worktree", "add", "--detach", safeCandidate, baseCommit);
         attached = true;
+        if (await git(safeCandidate, "rev-parse", "HEAD") !== baseCommit) throw new Error("候補の基準コミットが一致しません。");
         console.log(`\n候補 ${attempt}/${options.attempts} を作成中…`);
         await proposeSelfChange(safeCandidate, goal, modelUntilDeadline(options.model, deadline), (event) => {
           events.push(event);

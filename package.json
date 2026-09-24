@@ -15,6 +15,7 @@
     "check:growth": "node scripts/check-growth.ts",
     "eval": "node scripts/eval.ts",
     "eval:route": "node scripts/eval-route.ts",
+    "eval:review": "node scripts/eval.ts --review",
     "self:propose": "node scripts/self-improve.ts",
     "self:evaluate": "node scripts/evaluate-proposal.ts",
     "bench:response": "node scripts/bench-response.ts",

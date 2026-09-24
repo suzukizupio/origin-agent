@@ -6,7 +6,7 @@ import { access, readFile, realpath, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
-import { dockerRunArgs, evaluatePatch } from "../src/sandbox-eval.ts";
+import { dockerRunArgs, evaluatePatch, parseCheckSummary } from "../src/sandbox-eval.ts";
 import type { SandboxResult } from "../src/sandbox-eval.ts";
 
 const runFile = promisify(execFile);
@@ -49,7 +49,7 @@ async function sandboxRun(worktree: string, nodeModules: string, imageId: string
     const { stdout, stderr } = await runFile("docker", args, {
       encoding: "utf8", timeout: CHECK_TIMEOUT_MS, maxBuffer: MAX_OUTPUT, windowsHide: true,
     });
-    return { ok: true, exitCode: 0, timedOut: false, stdout, stderr };
+    return { ok: true, exitCode: 0, timedOut: false, stdout, stderr, checks: parseCheckSummary(stdout) };
   } catch (error) {
     const failure = error as Error & { code?: number | string; killed?: boolean; stdout?: string; stderr?: string };
     if (failure.killed || failure.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") {
@@ -63,6 +63,7 @@ async function sandboxRun(worktree: string, nodeModules: string, imageId: string
     return {
       ok: false, exitCode: failure.code, timedOut: false,
       stdout: failure.stdout ?? "", stderr: failure.stderr ?? "",
+      checks: parseCheckSummary(failure.stdout ?? ""),
     };
   }
 }
@@ -96,6 +97,10 @@ async function main(): Promise<void> {
   await writeFile(resultPath, `${JSON.stringify({ ...evaluation, imageId }, null, 2)}\n`, "utf8");
   console.log(`結果: ${evaluation.verdict}。記録: ${resultPath}`);
   console.log("パッチは元の作業場所に適用していません。");
+  if (evaluation.verdict === "invalid_checks") {
+    console.error("テスト未完了・件数不一致・スキップ等のため、改善とは判定できません。記録を確認してください。");
+    process.exitCode = 1;
+  }
 }
 
 await main().catch((error: unknown) => {
