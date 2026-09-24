@@ -71,6 +71,49 @@ export function locationEvidence(subject: string, documents: { url: string; text
   }
 }
 
+/** 会社概要に明記された事業項目だけを返す。小さいモデルの業種推測を挟まない。 */
+export function companyProfileEvidence(company: string, documents: { url: string; text: string }[]): string | undefined {
+  for (const document of documents) {
+    if (!document.text.replace(/\s+/g, "").includes(company)) continue;
+    const normalized = document.text.normalize("NFKC");
+    const marker = normalized.indexOf("主な事業内容");
+    if (marker >= 0) {
+      const section = normalized.slice(marker + "主な事業内容".length, marker + 900)
+        .split(/資本金|売上|従業員|所在地|取引銀行/)[0]!.replace(/\s+/g, " ").trim();
+      const items = [...section.matchAll(/(?:^| )\d+[.)、]\s*(.+?)(?= \d+[.)、]|$)/g)]
+        .map((match) => match[1]!.trim()).filter((item) => item.length >= 8 && item.length <= 120
+          && /販売|施工|設計|開発|製造|工事|サービス|運営/.test(item)).slice(0, 2);
+      if (items.length) {
+        return `${company}は、公開資料で「${items.join("」「")}」を主な事業として挙げています。\n\n[出典](${document.url})`;
+      }
+    }
+    const lines = document.text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const heading = lines.findIndex((line) => /^(?:主な)?事業内容$/.test(line.replace(/[\s:：]/g, "")));
+    if (heading >= 0) {
+      const items: string[] = [];
+      for (const line of lines.slice(heading + 1, heading + 15)) {
+        if (/^(?:資本金|売上|従業員|所在地|代表者|設立|創業|取引銀行|会社概要)/.test(line)) break;
+        const item = line.replace(/^(?:[・●*\-]|[0-9０-９]+[.)．、])\s*/, "").trim();
+        if (item.length >= 8 && item.length <= 120 && /販売|施工|設計|開発|製造|工事|サービス|運営/.test(item)) {
+          items.push(item);
+        }
+        if (items.length === 2) break;
+      }
+      if (items.length) {
+        return `${company}は、公開資料で「${items.join("」「")}」を主な事業として挙げています。\n\n[出典](${document.url})`;
+      }
+    }
+    const escaped = company.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const sentence = document.text.replace(/[ \t\u3000]+/g, "")
+      .match(new RegExp(`${escaped}[^。！？\n]{0,35}(?:主な)?事業内容は[、:：]?([^。！？\n]{8,120})[。！？]`));
+    if (sentence) {
+      const fact = sentence[1]!.replace(/です$/, "");
+      return `${company}の主な事業内容は、${fact}。\n\n[出典](${document.url})`;
+    }
+  }
+  return undefined;
+}
+
 /** 要約モデルが時間切れになった場合、取得済み資料の関連文だけを引用する。 */
 export function timeoutExcerpt(
   documents: { url: string; text: string }[],

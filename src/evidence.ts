@@ -48,6 +48,21 @@ export function unsupportedNumbers(answer: string, evidence: string[]): string[]
   return [...new Set(numbers(answer).filter((item) => !supported.has(item.key)).map((item) => item.text))];
 }
 
+/** 会社紹介の主要な名詞が取得した本文にないとき、業種の作り話を表示しない。 */
+export function unsupportedCompanyClaims(answer: string, documents: string[], company: string): string[] {
+  const cleaned = answer.replace(/\[[^\]]*\]\(https?:\/\/[^\s)]+\)/g, "")
+    .replace(/https?:\/\/\S+/g, "").replaceAll(company, "").normalize("NFKC");
+  if (/^(?:資料からは|公開情報では)?(?:確認できません|分かりません|不明です)/.test(cleaned.trim())) return [];
+  const reference = documents.join(" ").normalize("NFKC").replace(/[\s、。！？?「」『』（）()・:：]/g, "");
+  const generic = new Set(["会社", "企業", "同社", "当社", "事業", "内容", "公式", "出典", "参照", "資料", "確認", "回答", "前回", "今回", "情報", "可能", "現在"]);
+  const words = cleaned.match(/[\p{Script=Han}]{2,}|[\p{Script=Katakana}ー]{2,}|[A-Za-z]{3,}/gu) ?? [];
+  return [...new Set(words.filter((word) => {
+    if (generic.has(word) || reference.includes(word)) return false;
+    const pairs = Array.from({ length: word.length - 1 }, (_, index) => word.slice(index, index + 2));
+    return pairs.filter((pair) => reference.includes(pair)).length / pairs.length < 0.7;
+  }))];
+}
+
 export function unknownCitations(answer: string, sources: string[]): string[] {
   const normalize = (value: string) => { try { const url = new URL(value); url.hash = ""; return url.href; } catch { return value; } };
   const known = new Set(sources.map(normalize));

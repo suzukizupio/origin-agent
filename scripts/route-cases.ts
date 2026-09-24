@@ -41,11 +41,13 @@ export const tune: RouteCase[] = [
   { mode: "chat", expect: "search", input: "東京タワーはいつできたの？", queryIncludes: "東京タワー" },
   { mode: "chat", expect: "search", input: "徳川家康ってどんな人？", queryIncludes: "徳川家康" },
   { mode: "chat", expect: "search", input: "みらい平駅の時刻表を教えてください。", queryIncludes: "みらい平駅" },
+  { mode: "chat", expect: "search", input: "青空住宅株式会社とはどんな会社ですか？私が勤めています。", queryIncludes: "青空住宅株式会社", note: "公開の会社名だけを調べる" },
 
   // --- chat: 検索しないべき ---
   { mode: "chat", expect: "direct", input: "こんにちは" },
   { mode: "chat", expect: "direct", input: "聞こえていますか？" },
   { mode: "chat", expect: "direct", input: "私の名前は何ですか？", note: "ユーザー自身のこと" },
+  { mode: "chat", expect: "direct", input: "私の会社は何ですか？", note: "会社名がない個人情報" },
   { mode: "chat", expect: "direct", input: "天気とは何ですか？", note: "一般的な概念の説明。既存テスト" },
   { mode: "chat", expect: "direct", input: "JavaScriptの変数を初心者向けに説明して", note: "一般的な概念の説明" },
   { mode: "chat", expect: "direct", input: "ありがとう、助かりました" },

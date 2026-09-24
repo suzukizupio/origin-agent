@@ -1,6 +1,6 @@
 import type { AgentMode, ToolCall } from "./types.ts";
 
-export type ResearchTopic = { subjects: string[] };
+export type ResearchTopic = { subjects: string[]; organization?: string; organizationAttribute?: string };
 export type ResearchRoute = {
   firstCall?: Pick<ToolCall, "name" | "args">;
   allowWeb: boolean;
@@ -43,6 +43,25 @@ const ATTRIBUTE = /人口|高さ|標高|面積|広さ|長さ|深さ|いつ|何�
 const PERSON = /どんな人|何をした人|って誰|は誰/;
 /** 質問・依頼の印 */
 const REQUEST = /[?？]|教えて|知りたい|について|どんな|何|いつ|誰|どこ|いくら|ですか/;
+const COMPANY_SUFFIX = "(?:株式会社|有限会社|合同会社)";
+
+/** 公開の会社名だけを取り出す。「私が勤める」などの個人的な文は検索語へ渡さない。 */
+function companyName(input: string): string | undefined {
+  const suffix = input.match(new RegExp(`(?:^|[^\\p{Script=Han}\\p{Script=Katakana}A-Za-z0-9ー・＆&.-])([\\p{Script=Han}\\p{Script=Katakana}A-Za-z0-9ー・＆&.-]{2,40}${COMPANY_SUFFIX})(?=とは|って|は|の|について|です|[。！？?、\\s」』）)]|$)`, "u"));
+  if (suffix) return suffix[1];
+  const prefix = input.match(/(?:^|[。！？?、\s「『（(])((?:株式会社|有限会社|合同会社)[\p{L}\p{N}ー・＆&.-]{2,40}?)(?=とは|って|は|の|について|です|[。！？?、\s」』）)]|$)/u);
+  return prefix?.[1];
+}
+
+function companyRoute(company: string, question: string, attribute = "事業内容"): ResearchRoute {
+  return {
+    allowWeb: true, research: true, readSource: true,
+    topic: { subjects: [company], organization: company, organizationAttribute: attribute },
+    focus: [company, attribute, ...(attribute === "事業内容" ? ["事業", "サービス"] : [])],
+    firstCall: { name: "web_search", args: { query: `${company} ${attribute} 公式`, limit: 5 } },
+    resolvedQuestion: question,
+  };
+}
 
 function toQuery(input: string): string {
   const query = input.replace(/(?:インターネット|ネット|ウェブ|web)で/gi, " ")
@@ -91,6 +110,15 @@ export function researchRoute(input: string, mode: AgentMode, previous?: Researc
 
   const explicit = EXPLICIT.test(input);
   if (mode === "code" && ABOUT_CODE.test(input) && !explicit) return none;
+  const company = companyName(input);
+  if (company && REQUEST.test(input)) {
+    const attribute = input.match(/事業内容|業種|社長|代表者|代表取締役|設立|創業|資本金|売上|本社|所在地|従業員|製品|サービス/)?.[0] ?? "事業内容";
+    return companyRoute(company, `${company} の${attribute}を公開資料で確認し、出典を付けて答えてください。`, attribute);
+  }
+  if (previous?.organization && /違います|違う|間違|誤り|ではありません|ではない|じゃありません|じゃない/.test(input)) {
+    return companyRoute(previous.organization,
+      `前の会社説明について訂正がありました。${previous.organization} の事業内容を新たに公開資料で確認して答えてください。前の回答は根拠にしません。`);
+  }
   if (ABOUT_USER.test(input) && !explicit) return none;
 
   const url = input.match(/https?:\/\/[^\s「」<>]+/)?.[0]?.replace(/[。！？、)）]+$/, "");

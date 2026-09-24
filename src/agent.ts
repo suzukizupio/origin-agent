@@ -10,9 +10,9 @@ import { formatToolCall, parseToolCalls } from "./protocol.ts";
 import { readFile, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { createTextPreview } from "./streaming.ts";
-import { evidenceText, unknownCitations, unsupportedNumbers } from "./evidence.ts";
+import { evidenceText, unknownCitations, unsupportedCompanyClaims, unsupportedNumbers } from "./evidence.ts";
 import { compareEvidence, type Comparison, type SourceDocument } from "./comparison.ts";
-import { focusEvidence, locationEvidence, rankSources, searchExcerpts, timeoutExcerpt } from "./retrieval.ts";
+import { companyProfileEvidence, focusEvidence, locationEvidence, rankSources, searchExcerpts, timeoutExcerpt } from "./retrieval.ts";
 import { walkEntries } from "./tools/walk.ts";
 import { show } from "./tools/paths.ts";
 import { ProviderTimeoutError } from "./types.ts";
@@ -131,7 +131,7 @@ function checkResearchFetch(call: ToolCall, known: string[], fetched: Set<string
   ].filter((line) => line !== "").join("\n");
 }
 
-export type RunContext = { rewriteSource?: string; knowledge?: string; research?: boolean; allowWeb?: boolean; readSource?: boolean; additionalSearches?: string[]; topic?: { subjects: string[] }; comparison?: Comparison; focus?: string[] };
+export type RunContext = { rewriteSource?: string; knowledge?: string; research?: boolean; allowWeb?: boolean; readSource?: boolean; additionalSearches?: string[]; topic?: { subjects: string[]; organization?: string; organizationAttribute?: string }; comparison?: Comparison; focus?: string[] };
 
 export type AgentOptions = {
   provider: Provider;
@@ -296,6 +296,15 @@ export class Agent {
 
       // /search はユーザーが明示した検索。小さいモデルのツール選択に頼らず実行する。
       const pendingCall = pendingCalls.shift();
+      if (!pendingCall && context.topic?.organization && context.topic.organizationAttribute === "事業内容") {
+        const profile = companyProfileEvidence(context.topic.organization, documents);
+        if (profile) {
+          this.messages.push({ role: "assistant", content: profile });
+          emit({ type: "assistant", text: profile });
+          emit({ type: "done", reason: "answered" });
+          return;
+        }
+      }
       if (!pendingCall && context.topic?.subjects.length === 1 && context.focus?.includes("何地方")) {
         const fromPage = locationEvidence(context.topic.subjects[0]!, documents);
         const fromExcerpt = fromPage ? undefined : locationEvidence(context.topic.subjects[0]!, excerpts);
@@ -404,13 +413,15 @@ export class Agent {
         }
         if (research) {
           const missing = unsupportedNumbers(say, evidence);
+          const companyClaims = context.topic?.organization
+            ? unsupportedCompanyClaims(say, documents.map((document) => document.text), context.topic.organization) : [];
           const urls = unknownCitations(say, [...sources, ...fetched]);
           const withoutLinks = say.replace(/\[[^\]]*\]\(https?:\/\/[^\s)]+\)/g, "").replace(/https?:\/\/\S+/g, "")
             .replace(/\[(?:出典|参照元|参考資料)(?:\s*\d+)?\]/g, "").replace(/(?:参照元|出典)\s*[:：]/g, "");
           const nameOnly = withoutLinks.replace(/[\s。！!：:#*]/g, "").replace(/[都道府県市]$/, "");
           const incomplete = !!nameOnly && context.topic?.subjects.some((subject) => subject.replace(/[都道府県市]$/, "") === nameOnly);
           const instructionEcho = /この参考資料から最初の質問に|追加検索は不要です|今回調べる対象:|確認する項目:|\[あなたが呼び出した [^\]]+ の出力\]|\[参考資料\]/.test(say);
-          if (missing.length || urls.length || incomplete || instructionEcho) {
+          if (missing.length || companyClaims.length || urls.length || incomplete || instructionEcho) {
             this.messages.pop(); // 誤った回答を会話の事実として残さない。
             if (revising || step === this.maxSteps - 1) { finishResearchFailure(); return; }
             revising = true;
@@ -418,6 +429,7 @@ export class Agent {
             const correction: Message = { role: "tool", toolName: "answer_check", content: [
               "回答はまだ表示していません。取得資料だけから短く回答を作り直してください。追加ツールは不要です。",
               missing.length ? `資料にない数値: ${missing.join("、")}。資料と同じ値・単位を使い、推測や丸めた値を加えないでください。` : "",
+              companyClaims.length ? `取得した本文で確認できない会社説明: ${companyClaims.join("、")}。本文に明記された語だけで事業内容を説明し、確かめられない業種や製品は書かないでください。` : "",
               urls.length ? "参照元にないURLが含まれていました。取得したURLだけを使用してください。" : "",
               incomplete ? "対象名だけでは質問への説明になりません。質問で聞かれた場所や比較の根拠を、資料から具体的に答えてください。" : "",
               instructionEcho ? "回答の作り方の指示を繰り返していました。その指示文は回答に含めず、ユーザーの質問への答えだけを書いてください。" : "",
