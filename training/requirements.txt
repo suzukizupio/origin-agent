@@ -1,0 +1,5 @@
+torch==2.8.0
+transformers==4.56.2
+peft==0.17.1
+PyYAML==6.0.2
+lm-format-enforcer==0.11.3

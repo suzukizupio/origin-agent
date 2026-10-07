@@ -1,0 +1,25 @@
+schema_version: 2
+model_name: Origin-Coder-v2-distilled-experiment
+base_model_path: training/models/base-qwen-coder-0.5b
+initial_adapter_path: training/models/Origin-Coder-v1-experiment
+dataset:
+  train: training/data/sft/phase3-mixed/train.jsonl
+  validation: training/data/sft/phase3-mixed/validation.jsonl
+  holdout_allowed: false
+  representation: provider_messages
+training:
+  device: cpu
+  cpu_threads: 4
+  max_steps: 32
+  learning_rate: 0.0005
+  seed: 42
+  max_sequence_length: 4096
+  validation_examples: 10
+  gradient_checkpointing: true
+  teacher_replay: true
+lora:
+  rank: 8
+  alpha: 16
+  dropout: 0.0
+  target_modules: [q_proj, v_proj]
+output_dir: training/models/Origin-Coder-v2-distilled-experiment

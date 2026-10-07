@@ -1,0 +1,11 @@
+# Phase 2 design only; target modules and precision depend on the chosen model.
+schema_version: 1
+adapter:
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: null
+runtime:
+  quantization: null
+  precision: null
+output_dir: training/models/Origin-Coder-v1/adapter

@@ -3,3 +3,17 @@ dist/
 .env
 *.log
 .origin-agent/
+
+# Local training assets. Commit code/configuration, never datasets or weights.
+__pycache__/
+*.pyc
+training/.venv/
+training/data/**
+!training/data/**/
+!training/data/**/.gitkeep
+training/models/**
+!training/models/README.md
+training/tokenizer/**
+!training/tokenizer/README.md
+training/experiments/**
+!training/experiments/README.md

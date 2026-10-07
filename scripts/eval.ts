@@ -105,7 +105,7 @@ function parseArgs(argv: string[]): Options {
         "使い方: node scripts/eval.ts [オプション]",
         "",
         "  --repeat <回数>    1課題あたりの試行回数。既定は 3",
-        "  --provider <名前>  auto | rule | ollama。既定は auto",
+        "  --provider <名前>  auto | rule | ollama | origin。既定は auto",
         "  --model <名前>     モデル名",
         "  --only <id,id>     指定した課題だけ走らせる",
         "  --offline          ネットを使う課題を除外する（Ollamaへの接続は必要）",
@@ -383,8 +383,9 @@ async function main(): Promise<void> {
   // プロバイダを作る前に設定する。ollama プロバイダはこの環境変数から待ち時間を読む
   if (opts.timeoutSec !== undefined) {
     process.env.ORIGIN_OLLAMA_TIMEOUT_MS = String(Math.round(opts.timeoutSec * 1000));
+    process.env.ORIGIN_MODEL_TIMEOUT_MS = String(Math.round(opts.timeoutSec * 1000));
   }
-  const timeoutSec = Number(process.env.ORIGIN_OLLAMA_TIMEOUT_MS ?? 120_000) / 1000;
+  const timeoutSec = Number((opts.provider === "origin" ? process.env.ORIGIN_MODEL_TIMEOUT_MS : process.env.ORIGIN_OLLAMA_TIMEOUT_MS) ?? 120_000) / 1000;
   const selected = allTasks.filter((task) => {
     if (opts.suite === "daily" && task.suite !== "daily") return false;
     if (opts.only.length > 0) {

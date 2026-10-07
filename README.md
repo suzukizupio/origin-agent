@@ -467,6 +467,14 @@ npm run check:chat -- --model qwen2.5-coder:3b --out results/chat-baseline-3b.js
 
 ## 自作モデルと自動改善への道
 
+### 学習用データとローカルモデル（Phase 1 / Phase 2 / Phase 3）
+
+評価 JSON の `tasks[].attempts[].trace` を、成功・失敗の履歴、ツール操作を含む会話、成功した SFT 用会話へ変換できます。Python 3.10 以上の標準ライブラリだけで動き、既存 Agent・Provider は維持します。holdout の除外、課題単位の分割検査、秘密情報のマスク、重複除去を含みます。
+
+LoRA 学習、Python のローカル推論サーバー、`--provider origin --model baseline|candidate`、同一 Agent 条件での比較も実装しました。CPU で実際に学習し、Phase 2 の同系統の小規模 tune 4課題では学習前0/4、学習後4/4でした。使い方・保存形式・制限は [training/README.md](training/README.md) を参照してください。`npm run test:training` で学習基盤を確認できます。Phase 2 の学習・推論は Python 3.11 以上を使います。
+
+Phase 3 では、導入済みのローカル7Bモデルの編集案を実テストで確認し、教師の応答から48ステップの追加学習を行いました。構文制約なしの通常生成で、従来2課題は2/2を保持し、モデルとコードの固定後に作った未使用 holdout 4課題は1/4から4/4に改善しました。同じ2種類の処理の未使用パラメーターでの小規模試験で、広いコード修正能力は未検証です。使い方と測定条件は学習基盤の README に記載しています。
+
 ### 自分自身の修正案を作る（試験機能）
 
 ```powershell

@@ -1,8 +1,9 @@
 import { createRuleProvider } from "./rule.ts";
 import { createOllamaProvider, DEFAULT_MODEL, installedModels } from "./ollama.ts";
+import { createOriginProvider } from "./origin.ts";
 import type { Provider } from "../types.ts";
 
-export const providerNames = ["rule", "ollama"] as const;
+export const providerNames = ["rule", "ollama", "origin"] as const;
 export const REPAIR_MODEL = "qwen2.5-coder:7b";
 
 export type ProviderSelection = { provider: Provider; repairProvider?: Provider };
@@ -39,6 +40,8 @@ export function createProvider(name: string, model?: string): Provider {
       return createRuleProvider();
     case "ollama":
       return createOllamaProvider(model === undefined ? {} : { model });
+    case "origin":
+      return createOriginProvider(model === undefined ? {} : { variant: model });
     default:
       throw new Error(`未知のプロバイダ: ${name}（使えるのは ${providerNames.join(", ")}）`);
   }

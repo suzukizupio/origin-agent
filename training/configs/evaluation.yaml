@@ -1,0 +1,22 @@
+# Phase 2 comparison design; use existing scripts/eval.ts as the Agent evaluator.
+schema_version: 1
+primary_metric: task_success_rate
+baseline_model: null
+candidate_model: Origin-Coder-v1
+comparison:
+  same_agent_commit: true
+  same_tools: true
+  same_tasks: true
+  same_machine: true
+  same_timeout: true
+  repeat: 3
+  timeout_sec: 300
+partitions:
+  training: train
+  training_checks: validation
+  development_evaluation: tune
+  final_evaluation: holdout
+holdout:
+  used_for_training: false
+  inspect_during_development: false
+  expose_task_details: false

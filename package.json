@@ -8,6 +8,7 @@
     "start": "node src/cli.ts",
     "practice": "node src/cli.ts --mode code --root examples/json-practice",
     "test": "node --test test/*.test.ts",
+    "test:training": "python -m unittest discover -s training/tests -v",
     "check:live": "node scripts/check-live.ts",
     "check:chat": "node scripts/eval.ts --suite daily --offline --repeat 1",
     "check:research": "node scripts/check-research.ts",
