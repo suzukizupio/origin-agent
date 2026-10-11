@@ -485,6 +485,12 @@ node scripts/recovery-curriculum.ts generate training/data/recovery
 
 学習・推論・比較の手順と、固定の失敗前提を使う評価の範囲は [training/README.md](training/README.md#編集失敗からの復帰を学習する) を参照。既存のモデルや教材は上書きしない。
 
+### スマートフォンから試す
+
+PCを使わずに開ける非公開の検証画面: https://origin-pocket-lab.smartghost64.chatgpt.site
+
+同じChatGPTアカウントで開き、通常編集、失敗からの復帰、学習前後のモデルの違い、生成された会話を確認できる。実モデルはサーバー側で動く。モデル用サーバーの稼働中に利用でき、停止中も学習の記録は表示する。会話では入力を繰り返す応答も確認しており、今回の性能改善の測定対象はコード編集と復帰。構成と実行範囲は [mobile/README.md](mobile/README.md) を参照。
+
 ### 自分自身の修正案を作る（試験機能）
 
 ```powershell

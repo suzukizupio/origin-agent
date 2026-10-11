@@ -20,7 +20,7 @@ export function recoveryRecipe(seed: number) {
   return { ...task, oldString, refreshed, taskId: `origin-recovery-${seed}` };
 }
 
-export async function runRecovery(seed: number, provider?: Provider, split: "train" | "validation" | "tune" = "tune") {
+export async function runRecovery(seed: number, provider?: Provider, split: "train" | "validation" | "tune" = "tune", onEvent?: (event: AgentEvent) => void) {
   const task = recoveryRecipe(seed);
   const parent = resolve(process.env.ORIGIN_PRACTICE_PARENT ?? tmpdir());
   await mkdir(parent, { recursive: true });
@@ -75,6 +75,7 @@ export async function runRecovery(seed: number, provider?: Provider, split: "tra
   const started = Date.now();
   let ok = false;
   let reason: string | undefined;
+  let sourceAfter: string | undefined;
   try {
     await mkdir(join(root, "src")); await mkdir(join(root, "test"));
     await writeFile(join(root, "package.json"), '{"type":"module"}\n');
@@ -82,7 +83,8 @@ export async function runRecovery(seed: number, provider?: Provider, split: "tra
     await writeFile(join(root, task.testFile), task.tests);
     const agent = new Agent({ provider: continuation, tools, mode: "code", maxSteps: 7,
       ctx: { root, confirm: async (message) => !message.startsWith("コマンドを実行します:") || message === "コマンドを実行します: node --test" } });
-    await agent.run(task.input, (event) => events.push(event));
+    await agent.run(task.input, (event) => { events.push(event); onEvent?.(event); });
+    sourceAfter = await readFile(join(root, task.path), "utf8");
     if (!injected || !reread) throw new Error("Did not re-read the source after the edit failure");
     if (await readFile(join(root, task.testFile), "utf8") !== task.tests) throw new Error("Test file changed");
     if (!(await readFile(join(root, task.path), "utf8")).includes("export function neighbor(value) { return value - 1; }")) throw new Error("Unrelated neighbor changed");
@@ -96,7 +98,7 @@ export async function runRecovery(seed: number, provider?: Provider, split: "tra
   } catch (error) { reason = error instanceof Error ? error.message : String(error); }
   finally { await rm(root, { recursive: true, force: true }); }
   if (!provider && !ok) throw new Error(`Recovery demonstration failed verification: ${reason}`);
-  return { task_id: task.taskId, ok, ms: Date.now() - started, reason, events, examples };
+  return { task_id: task.taskId, ok, ms: Date.now() - started, reason, events, examples, sourceAfter };
 }
 
 async function main() {

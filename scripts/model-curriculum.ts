@@ -29,7 +29,7 @@ export function recipe(seed: number) {
   return { seed, path, before, oldString, newString, testFile, tests, input };
 }
 
-export async function runPractice(seed: number, provider?: Provider, split: "train" | "validation" | "tune" = "tune") {
+export async function runPractice(seed: number, provider?: Provider, split: "train" | "validation" | "tune" = "tune", onEvent?: (event: AgentEvent) => void) {
   const task = recipe(seed);
   const controlledParent = process.env.ORIGIN_PRACTICE_PARENT;
   const parent = resolve(controlledParent ?? tmpdir());
@@ -56,6 +56,7 @@ export async function runPractice(seed: number, provider?: Provider, split: "tra
   const started = Date.now();
   let ok = false;
   let reason: string | undefined;
+  let sourceAfter: string | undefined;
   try {
     await mkdir(join(root, "src")); await mkdir(join(root, "test"));
     await writeFile(join(root, "package.json"), '{"type":"module"}\n');
@@ -63,7 +64,8 @@ export async function runPractice(seed: number, provider?: Provider, split: "tra
     await writeFile(join(root, task.testFile), task.tests);
     const agent = new Agent({ provider: provider ?? scripted, mode: "code", maxSteps: 5, tools: curriculumTools, ctx: { root, confirm: async (message) =>
       !message.startsWith("コマンドを実行します:") || message === "コマンドを実行します: node --test" } });
-    await agent.run(task.input, (event) => events.push(event));
+    await agent.run(task.input, (event) => { events.push(event); onEvent?.(event); });
+    sourceAfter = await readFile(join(root, task.path), "utf8");
     if (await readFile(join(root, task.testFile), "utf8") !== task.tests) throw new Error("Test file changed");
     if (!(await readFile(join(root, task.path), "utf8")).includes("export function neighbor(value) { return value - 1; }")) throw new Error("Unrelated neighbor function changed");
     const checkEnv = { ...process.env }; delete checkEnv.NODE_TEST_CONTEXT;
@@ -79,7 +81,7 @@ export async function runPractice(seed: number, provider?: Provider, split: "tra
     await rm(root, { recursive: true, force: true });
   }
   if (!provider && !ok) throw new Error(`Curated example failed verification: ${reason}`);
-  return { task_id: `origin-practice-${seed}`, ok, ms: Date.now() - started, reason, events, examples };
+  return { task_id: `origin-practice-${seed}`, ok, ms: Date.now() - started, reason, events, examples, sourceAfter };
 }
 
 async function main() {
