@@ -8,7 +8,7 @@ import random
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from origin_dataset import DatasetError, canonical
-from origin_training import adapter_manifest, base_manifest, encode_target, file_hash, load_partitions, sft_input, validate_tune_tasks, training_order
+from origin_training import adapter_manifest, base_manifest, encode_target, file_hash, load_model, load_partitions, sft_input, validate_tune_tasks, training_order
 from origin_model_server import validate_request
 
 
@@ -27,6 +27,11 @@ class Tokenizer:
 
 
 class TrainingTests(unittest.TestCase):
+    def test_invalid_precision_is_refused_before_loading_weights(self):
+        for precision in ("float16", "auto", "unknown"):
+            with self.subTest(precision=precision), self.assertRaisesRegex(DatasetError, "dtype"):
+                load_model(Path("unused"), 2, "cpu", precision)
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="origin-sft-test-")
         self.root = Path(self.temporary.name)

@@ -108,16 +108,17 @@ def encode_target(tokenizer: Any, record: dict, max_length: int) -> dict:
     return {"input_ids": full, "target_ids": full[len(prefix):], "task_id": record["task_id"]}
 
 
-def load_model(path: Path, threads: int, device: str = "cpu"):
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+def load_model(path: Path, threads: int, device: str = "cpu", dtype: str = "float32"):
     require(1 <= threads <= 32, "CPU threads must be 1..32")
     require(device in ("cpu", "cuda"), "Device must be cpu or cuda")
+    require(dtype in ("float32", "bfloat16"), "Model dtype must be float32 or bfloat16")
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
     require(device != "cuda" or torch.cuda.is_available(), "CUDA is unavailable")
     torch.set_num_threads(threads)
     tokenizer = AutoTokenizer.from_pretrained(str(path), local_files_only=True, trust_remote_code=False)
     require(bool(tokenizer.chat_template), "Base model needs an explicit chat template")
-    model = AutoModelForCausalLM.from_pretrained(str(path), local_files_only=True, trust_remote_code=False, use_safetensors=True, torch_dtype=torch.float32, attn_implementation="sdpa").to(device)
+    model = AutoModelForCausalLM.from_pretrained(str(path), local_files_only=True, trust_remote_code=False, use_safetensors=True, dtype=getattr(torch, dtype), attn_implementation="sdpa").to(device)
     require(model.config.model_type == "qwen2", "Only the Qwen2 causal model family is validated by this CPU training pipeline")
     return torch, tokenizer, model
 

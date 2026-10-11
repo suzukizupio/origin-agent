@@ -66,7 +66,8 @@ export async function runPractice(seed: number, provider?: Provider, split: "tra
     await agent.run(task.input, (event) => events.push(event));
     if (await readFile(join(root, task.testFile), "utf8") !== task.tests) throw new Error("Test file changed");
     if (!(await readFile(join(root, task.path), "utf8")).includes("export function neighbor(value) { return value - 1; }")) throw new Error("Unrelated neighbor function changed");
-    const checked = await promisify(execFile)(process.execPath, ["--test"], { cwd: root, windowsHide: true, timeout: 20_000 });
+    const checkEnv = { ...process.env }; delete checkEnv.NODE_TEST_CONTEXT;
+    const checked = await promisify(execFile)(process.execPath, ["--test", "--test-reporter=tap"], { cwd: root, env: checkEnv, windowsHide: true, timeout: 20_000 });
     if (!/tests 1/.test(checked.stdout) || !/pass 1/.test(checked.stdout)) throw new Error("Expected test was not executed");
     if (!events.some((e) => e.type === "tool_end" && e.name === "run_shell" && e.ok)) throw new Error("Agent did not verify the change with a passing test");
     if (events.at(-1)?.type !== "done" || (events.at(-1) as Extract<AgentEvent, { type: "done" }>).reason !== "answered") throw new Error("Agent did not complete the task");

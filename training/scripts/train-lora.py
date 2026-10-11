@@ -28,6 +28,7 @@ def main() -> None:
     steps = args.max_steps if args.max_steps is not None else training["max_steps"]
     require(isinstance(steps, int) and 1 <= steps <= 100_000, "max_steps must be 1..100000")
     require(0 < training["learning_rate"] <= 0.1 and 1 <= lora["rank"] <= 256, "Invalid optimizer/LoRA configuration")
+    require(training.get("dtype", "float32") in ("float32", "bfloat16"), "Model dtype must be float32 or bfloat16")
     require(config["dataset"]["holdout_allowed"] is False, "Holdout is never an SFT input")
     output = args.output or Path(config["output_dir"])
     require(not output.exists(), "Output already exists; use a new experiment directory")
@@ -44,7 +45,7 @@ def main() -> None:
                          "teacher_updates": sum(train[index]["metadata"]["source"].get("target_origin") == "teacher_patch" for index in order)}))
         return
     os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1"); os.environ.setdefault("HF_HUB_OFFLINE", "1")
-    torch, tokenizer, model = load_model(base_path, training["cpu_threads"], training["device"])
+    torch, tokenizer, model = load_model(base_path, training["cpu_threads"], training["device"], training.get("dtype", "float32"))
     from peft import LoraConfig, TaskType, get_peft_model, PeftModel
     import peft
     import transformers
@@ -84,7 +85,7 @@ def main() -> None:
         "config": config, "actual_steps": steps, "config_sha256": config_hash, "parent_adapter_sha256": parent["adapter_sha256"] if parent else None,
         "target_counts": {"teacher": sum(train[index]["metadata"]["source"].get("target_origin") == "teacher_patch" for index in order), "replay": sum(train[index]["metadata"]["source"].get("target_origin") != "teacher_patch" for index in order)},
         "sampled_target_ids": [train[index]["id"] for index in order], "objective": "response_distillation" if training.get("teacher_replay", False) else "curated_sft",
-        "runtime": {"python": platform.python_version(), "torch": torch.__version__, "transformers": transformers.__version__, "peft": peft.__version__, "machine": platform.machine(), "device": training["device"], "cpu_threads": training["cpu_threads"]},
+        "runtime": {"python": platform.python_version(), "torch": torch.__version__, "transformers": transformers.__version__, "peft": peft.__version__, "machine": platform.machine(), "device": training["device"], "dtype": training.get("dtype", "float32"), "cpu_threads": training["cpu_threads"]},
         "validation_loss_before": initial, "validation_loss_after": final, "elapsed_sec": round(time.monotonic() - started, 2), "history": history,
         "task_success_improved": None, "status": "trained_requires_agent_evaluation", "adapter_sha256": file_hash(output / "adapter_model.safetensors")}
     (output / "origin-training.json").write_text(canonical(experiment) + "\n", encoding="utf-8")
