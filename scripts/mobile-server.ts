@@ -12,7 +12,7 @@ type Job = { id: string; kind: "chat" | "ordinary" | "recovery"; variant: "basel
   status: "running" | "completed" | "failed"; started: number; events: AgentEvent[]; input: string;
   before?: string; after?: string; ok?: boolean; answer?: string; reason?: string; durationMs?: number };
 
-export function createMobileServer(token: string, providerFactory: (variant: string) => Provider = (variant) => createOriginProvider({ variant })) {
+export function createMobileServer(token: string, providerFactory: (variant: string, kind: Job["kind"]) => Provider = (variant, kind) => createOriginProvider({ variant, conversationOnly: kind === "chat" })) {
   if (!/^[a-f0-9]{64}$/.test(token)) throw new Error("A 256-bit access token is required");
   const jobs = new Map<string, Job>();
   let active = false;
@@ -64,19 +64,21 @@ export function createMobileServer(token: string, providerFactory: (variant: str
       void (async () => {
         const emit = (event: AgentEvent) => { if (job.events.length < 120) job.events.push(event); };
         try {
-          const provider = providerFactory(job.variant);
+          const provider = providerFactory(job.variant, job.kind);
           if (job.kind === "chat") {
-            const agent = new Agent({ provider, mode: "chat", tools: [], maxSteps: 3,
+            const agent = new Agent({ provider, mode: "chat", tools: [], maxSteps: 1,
               ctx: { root: "", confirm: async () => false } });
             agent.messages = (body.history ?? []).map((message) => ({ role: message.role, content: message.content }));
             await agent.run(job.input, emit);
-            job.answer = job.events.filter((e): e is Extract<AgentEvent, { type: "assistant" }> => e.type === "assistant").map((e) => e.text).join("\n");
-            job.ok = job.events.at(-1)?.type === "done";
+            job.answer = job.events.filter((e): e is Extract<AgentEvent, { type: "assistant" }> => e.type === "assistant").map((e) => e.text).join("\n").trim();
+            const done = job.events.at(-1);
+            job.ok = done?.type === "done" && done.reason === "answered" && !!job.answer;
+            if (!job.ok) job.reason = "モデルが文章の回答を返せませんでした。会話をリセットして、もう一度お試しください。";
           } else {
             const result = job.kind === "recovery" ? await runRecovery(seed, provider, "tune", emit) : await runPractice(seed, provider, "tune", emit);
             job.ok = result.ok; job.reason = result.reason; job.after = result.sourceAfter;
           }
-          job.status = "completed";
+          job.status = job.ok ? "completed" : "failed";
         } catch { job.status = "failed"; job.reason = "モデルの実行に失敗しました。少し待って、もう一度お試しください。"; }
         finally { active = false; job.durationMs = Date.now() - job.started; }
       })();

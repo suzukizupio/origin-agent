@@ -26,7 +26,7 @@ export function originHost(host = process.env.ORIGIN_MODEL_HOST ?? "http://127.0
   return url.origin;
 }
 
-export function createOriginProvider(opts: { variant?: string; host?: string; timeoutMs?: number } = {}): Provider {
+export function createOriginProvider(opts: { variant?: string; host?: string; timeoutMs?: number; conversationOnly?: boolean } = {}): Provider {
   const variant = opts.variant ?? "candidate";
   if (variant !== "baseline" && variant !== "candidate") throw new Error("origin の --model は baseline または candidate です。");
   const host = originHost(opts.host);
@@ -36,6 +36,15 @@ export function createOriginProvider(opts: { variant?: string; host?: string; ti
     name: `origin:${variant}`,
     contextBudget: 4000,
     async complete(messages, tools, env, callbacks = {}) {
+      if (opts.conversationOnly && (env.mode !== "chat" || tools.length > 0 || messages.some((message) => message.role === "tool"))) {
+        throw new Error("会話専用の Origin Model にはユーザーとアシスタントの会話だけを渡してください。");
+      }
+      // A tool-free conversation must not advertise search, CLI commands or tool syntax.
+      // Keep the coding/SFT representation unchanged.
+      const requestMessages: OriginMessage[] = opts.conversationOnly ? [
+        { role: "system", content: "あなたは日本語のアシスタントOriginです。ユーザーのメッセージに、自然で短い日本語で直接答えてください。挨拶には挨拶を返します。道具は使えません。" },
+        ...messages.map((message) => ({ role: message.role as "user" | "assistant", content: message.content })),
+      ] : originMessages(messages, tools, env);
       const started = performance.now();
       let response: Response;
       let raw: string;
@@ -43,7 +52,7 @@ export function createOriginProvider(opts: { variant?: string; host?: string; ti
       try {
         response = await fetch(`${host}/v1/completions`, {
           method: "POST", redirect: "error", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ variant, messages: originMessages(messages, tools, env) }),
+          body: JSON.stringify({ variant, messages: requestMessages }),
           signal,
         });
         raw = await response.text();

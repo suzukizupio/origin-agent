@@ -40,3 +40,23 @@ test("mobile: a chat job gets no tools and a concurrent job is rejected", async 
     { headers: { authorization: `Bearer ${"c".repeat(64)}` } })).json() as typeof job; } while (job.status === "running");
   assert.equal(emptyTools, true); assert.equal(job.answer, "会話の回答です。");
 });
+
+test("mobile: empty answers and unavailable tool requests are failed jobs", async (t) => {
+  let response = "   ";
+  const server = createMobileServer("d".repeat(64), (variant, kind) => {
+    assert.equal(variant, "candidate"); assert.equal(kind, "chat");
+    return { name: "fixture", complete: async () => response };
+  });
+  server.listen(0, "127.0.0.1"); await once(server, "listening"); t.after(() => server.close());
+  const address = server.address(); assert.ok(address && typeof address !== "string");
+  const base = `http://127.0.0.1:${address.port}`;
+  const headers = { authorization: `Bearer ${"d".repeat(64)}` };
+  for (response of ["   ", '<tool name="web_search">{"query":"こんにちわ"}</tool>']) {
+    const start = await fetch(base + "/jobs", { method: "POST", headers, body: JSON.stringify({kind:"chat",variant:"candidate",input:"こんにちわ"}) });
+    assert.equal(start.status, 202);
+    const { id } = await start.json() as {id:string};
+    let job: { status:string; ok:boolean; reason:string };
+    do { await new Promise((done) => setTimeout(done, 5)); job = await (await fetch(base + "/jobs/" + id, {headers})).json() as typeof job; } while (job.status === "running");
+    assert.equal(job.status, "failed"); assert.equal(job.ok, false); assert.match(job.reason, /文章の回答/);
+  }
+});
