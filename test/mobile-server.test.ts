@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { createMobileServer } from "../scripts/mobile-server.ts";
+import { CONVERSATION_MODEL } from "../src/providers/origin-conversation.ts";
 
 test("mobile: requests need authentication and cannot request arbitrary commands", async (t) => {
   let called = 0;
@@ -35,16 +36,42 @@ test("mobile: a chat job gets no tools and a concurrent job is rejected", async 
   const { id } = await first.json() as { id: string };
   assert.equal((await start()).status, 409);
   release();
-  let job: { status: string; answer: string };
+  let job: { status: string; answer: string; model: string; variant: string };
   do { await new Promise((done) => setTimeout(done, 5)); job = await (await fetch(base + "/jobs/" + id,
     { headers: { authorization: `Bearer ${"c".repeat(64)}` } })).json() as typeof job; } while (job.status === "running");
   assert.equal(emptyTools, true); assert.equal(job.answer, "会話の回答です。");
+  assert.equal(job.model, CONVERSATION_MODEL); assert.equal(job.variant, "baseline");
+});
+
+test("mobile: reports a missing or wrong conversation model independently of the coding model", async (t) => {
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  let chat = "offline";
+  globalThis.fetch = (async (url, init) => {
+    if (String(url) === "http://127.0.0.1:18080/health") return Response.json({ready:true,base_repository:"Qwen/Qwen2.5-Coder-0.5B-Instruct",adapter_sha256:"fixture-adapter"});
+    if (String(url) === "http://127.0.0.1:18083/health") {
+      if (chat === "offline") throw Error("Unavailable");
+      return Response.json({ready:true,base_repository:chat,adapter_sha256:null});
+    }
+    return original(url, init);
+  }) as typeof fetch;
+  const server = createMobileServer("e".repeat(64));
+  server.listen(0, "127.0.0.1"); await once(server, "listening"); t.after(() => server.close());
+  const address = server.address(); assert.ok(address && typeof address !== "string");
+  for (chat of ["offline", "wrong-model", CONVERSATION_MODEL]) {
+    const response = await fetch(`http://127.0.0.1:${address.port}/health`, {headers:{authorization:`Bearer ${"e".repeat(64)}`}});
+    assert.equal(response.status,200);
+    const health = await response.json() as {ready:boolean;models:{chat:{ready:boolean};code:{ready:boolean}}};
+    assert.equal(health.models.code.ready,true);
+    assert.equal(health.models.chat.ready,chat === CONVERSATION_MODEL);
+    assert.equal(health.ready,chat === CONVERSATION_MODEL);
+  }
 });
 
 test("mobile: empty answers and unavailable tool requests are failed jobs", async (t) => {
   let response = "   ";
   const server = createMobileServer("d".repeat(64), (variant, kind) => {
-    assert.equal(variant, "candidate"); assert.equal(kind, "chat");
+    assert.equal(variant, "baseline"); assert.equal(kind, "chat");
     return { name: "fixture", complete: async () => response };
   });
   server.listen(0, "127.0.0.1"); await once(server, "listening"); t.after(() => server.close());

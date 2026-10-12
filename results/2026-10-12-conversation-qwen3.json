@@ -1,0 +1,346 @@
+{
+  "checked_at": "2026-10-12T03:42:43.580672+00:00",
+  "site": "https://origin-pocket-lab.smartghost64.chatgpt.site",
+  "health": {
+    "ready": true,
+    "busy": false,
+    "model": "Origin Pocket",
+    "adapter_sha256": "1d651989d76e8bfd482f89f126f25370d26d4500dd6ea60a9ff7b28365a289b5",
+    "models": {
+      "code": {
+        "ready": true,
+        "base_repository": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+        "base_sha256": "f6824be9d86d0fe1ec6279dfa7276f5a2515db724e8ea59d324c5b9e654f3be4",
+        "adapter_sha256": "1d651989d76e8bfd482f89f126f25370d26d4500dd6ea60a9ff7b28365a289b5",
+        "model": "Origin-Coder recovery"
+      },
+      "chat": {
+        "ready": true,
+        "base_repository": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+        "base_sha256": "e1522d848ef4efbe08e14cd74fc4c0af276ad6e7d13021e427dcc643a23ad20e",
+        "adapter_sha256": null,
+        "model": "unsloth/Qwen3-4B-Instruct-2507-GGUF"
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "capabilities",
+      "input": "こんにちは。あなたは何ができますか？",
+      "all": [
+        [
+          "要約"
+        ],
+        [
+          "コード"
+        ],
+        [
+          "文章",
+          "文書"
+        ]
+      ],
+      "history": [],
+      "answer": "こんにちは！私は文章の作成、要約、説明、コードの修正など、さまざまなことができます。何かご質問やお手伝いが必要ですか？",
+      "reason": null,
+      "duration_ms": 5579,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "edit-recovery",
+      "continue_from_previous": true,
+      "input": "コードの編集が失敗したとき、どうやって立て直しますか？",
+      "all": [
+        [
+          "確認",
+          "調べ"
+        ],
+        [
+          "エラー",
+          "原因"
+        ],
+        [
+          "修正",
+          "直し"
+        ]
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "こんにちは。あなたは何ができますか？"
+        },
+        {
+          "role": "assistant",
+          "content": "こんにちは！私は文章の作成、要約、説明、コードの修正など、さまざまなことができます。何かご質問やお手伝いが必要ですか？"
+        }
+      ],
+      "answer": "コードの編集が失敗した場合、まずエラーメッセージを確認し、原因を特定します。その後、最小限の修正を加えて再試行します。もし問題が解決しない場合は、元のコードに戻してから、原因を丁寧に検証します。",
+      "reason": null,
+      "duration_ms": 8246,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "testing",
+      "continue_from_previous": true,
+      "input": "プログラミングのテストが大切な理由を、短く説明してください。",
+      "all": [
+        [
+          "問題",
+          "バグ",
+          "エラー"
+        ],
+        [
+          "確認",
+          "発見",
+          "品質"
+        ]
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "こんにちは。あなたは何ができますか？"
+        },
+        {
+          "role": "assistant",
+          "content": "こんにちは！私は文章の作成、要約、説明、コードの修正など、さまざまなことができます。何かご質問やお手伝いが必要ですか？"
+        },
+        {
+          "role": "user",
+          "content": "コードの編集が失敗したとき、どうやって立て直しますか？"
+        },
+        {
+          "role": "assistant",
+          "content": "コードの編集が失敗した場合、まずエラーメッセージを確認し、原因を特定します。その後、最小限の修正を加えて再試行します。もし問題が解決しない場合は、元のコードに戻してから、原因を丁寧に検証します。"
+        }
+      ],
+      "answer": "テストはコードの正しさを確認し、バグを早期に発見するためです。また、機能の変更や追加時に安定性を保つのにも必要です。",
+      "reason": null,
+      "duration_ms": 5640,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "greeting",
+      "input": "こんにちわ",
+      "all": [
+        [
+          "こんにちは"
+        ]
+      ],
+      "history": [],
+      "answer": "こんにちは！どうされましたか？何かお手伝いできることがありましたら、いつでもお知らせくださいね。",
+      "reason": null,
+      "duration_ms": 2919,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "paraphrase",
+      "input": "どんな手伝いをお願いできますか？",
+      "all": [
+        [
+          "文章",
+          "文書",
+          "要約",
+          "コード",
+          "説明"
+        ]
+      ],
+      "history": [],
+      "answer": "お手伝いできることは、文章の作成や要約、説明、コードの修正など、さまざまなことがあります。何をどうお手伝いできるか、具体的に教えていただけますか？",
+      "reason": null,
+      "duration_ms": 5462,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "user-name",
+      "history": [
+        {
+          "role": "user",
+          "content": "私の名前はカナです。"
+        },
+        {
+          "role": "assistant",
+          "content": "カナさん、よろしくお願いします。"
+        }
+      ],
+      "input": "私の名前は何ですか？",
+      "all": [
+        [
+          "カナ"
+        ]
+      ],
+      "answer": "あなたの名前はカナです。",
+      "reason": null,
+      "duration_ms": 2513,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "followup",
+      "history": [
+        {
+          "role": "user",
+          "content": "テストは何のために行いますか？"
+        },
+        {
+          "role": "assistant",
+          "content": "テストは、プログラムが期待どおりに動作するかを確かめ、問題を早く見つけるために行います。"
+        }
+      ],
+      "input": "もっと短く一文で教えてください。",
+      "all": [
+        [
+          "動作",
+          "問題",
+          "不具合",
+          "バグ",
+          "エラー",
+          "誤り"
+        ]
+      ],
+      "max_sentences": 1,
+      "answer": "テストは誤りを早期に発見するためです。",
+      "reason": null,
+      "duration_ms": 3923,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "summary",
+      "input": "次の文章を短くしてください。「明日の会議は午前10時から始まります。場所は第2会議室です。」",
+      "all": [
+        [
+          "10時"
+        ],
+        [
+          "第2会議室",
+          "第二会議室"
+        ]
+      ],
+      "max_chars": 30,
+      "history": [],
+      "answer": "明日の会議は、午前10時、第2会議室。",
+      "reason": null,
+      "duration_ms": 3396,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "no-live-data",
+      "input": "今の東京の天気を調べてください。",
+      "all": [
+        [
+          "できません",
+          "持っていません",
+          "分かりません",
+          "わかりません"
+        ]
+      ],
+      "history": [],
+      "answer": "申し訳ありません、現在の天気情報を提供することはできません。リアルタイムの天気データは、外部サービスに依存しており、私の機能範囲外です。東京の天気を確認したい場合は、天気アプリやウェブサイトをご利用ください。",
+      "reason": null,
+      "duration_ms": 5944,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "everyday-question",
+      "input": "卵を焼くときに焦がさないコツは？",
+      "all": [
+        [
+          "弱火",
+          "中火",
+          "低温",
+          "温度",
+          "火加減",
+          "火を弱",
+          "火の強さを弱"
+        ]
+      ],
+      "forbidden": [
+        "油が沸騰するまで",
+        "油を沸騰させ",
+        "油が沸騰したら"
+      ],
+      "history": [],
+      "answer": "卵を焼くときに焦がさないコツは、火の強さを控えめにし、卵を少しずつ加熱するようにすることです。また、卵を鍋にのせた後、少し待つことで内部が均一に加熱され、外が焦げにくくなります。",
+      "reason": null,
+      "duration_ms": 7343,
+      "structure_ok": true,
+      "content_checks_ok": false
+    }
+  ],
+  "scope": "Regression check for the reported question echo and nine adjacent cases, with manual content review. Cases and prompts were used during development; not a held-out capability evaluation or a guarantee of general correctness.",
+  "requires_manual_review": false,
+  "passed": 9,
+  "reported_echo_regression_resolved": true,
+  "manual_review": {
+    "capabilities": "Pass: explains text capabilities instead of echoing the question.",
+    "edit-recovery": "Partial: identifies errors and proposes minimal fixes, but fallback restoration does not mention saving current changes or running tests.",
+    "testing": "Pass: explains early bug detection and stability.",
+    "greeting": "Pass: returns a natural greeting and an offer of help.",
+    "paraphrase": "Pass: describes capabilities before asking what help is needed.",
+    "user-name": "Pass: uses the supplied conversation history correctly.",
+    "followup": "Pass: responds with one short sentence.",
+    "summary": "Pass: shortens the original and preserves the day, time and room.",
+    "no-live-data": "Pass: explicitly declines unavailable live weather access.",
+    "everyday-question": "Pass with limited depth: advises gentler heat; automatic keyword check misses 火の強さを控えめ. No oil-boiling advice."
+  },
+  "automated_check_summary": "10/10 completed with the expected model and no tools; 9/10 keyword/format checks. The everyday-question miss is a wording false negative. Manual review records a partial code-recovery explanation.",
+  "model_manifest": {
+    "file": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+    "format": "gguf",
+    "license": "apache-2.0",
+    "quantization": "Q4_K_M",
+    "repository": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+    "revision": "a06e946bb6b655725eafa393f4a9745d460374c9",
+    "sha256": "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
+    "upstream_model": "Qwen/Qwen3-4B-Instruct-2507",
+    "version": 1
+  },
+  "runtime": {
+    "adapter_sha256": null,
+    "base_repository": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+    "base_revision": "a06e946bb6b655725eafa393f4a9745d460374c9",
+    "base_sha256": "e1522d848ef4efbe08e14cd74fc4c0af276ad6e7d13021e427dcc643a23ad20e",
+    "generation": {
+      "chat_format": "chatml",
+      "repeat_penalty": 1.0,
+      "seed": 42,
+      "temperature": 0
+    },
+    "max_input_tokens": 4096,
+    "max_output_tokens": 256,
+    "quantization": "Q4_K_M",
+    "ready": true,
+    "threads": 2,
+    "variants": [
+      "baseline"
+    ],
+    "weight_sha256": "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597"
+  },
+  "source_sha256": {
+    "src/providers/origin.ts": "f78f022d76dfbe4301cc03784802b0b64bbe1b932406bd274975d9054b5e1e14",
+    "src/providers/origin-conversation.ts": "ef84e88e6b5ecc3388fe71bf6ea4b68ee2f70053bb47e6d36b3f217ffbd22457",
+    "scripts/mobile-server.ts": "070e6800b5e2c01ac0355fc02ed65209af6669797dbfb8e6c7fd2bdde2cbc81a",
+    "training/scripts/serve-conversation.py": "18c60eb79b41dcdd72b41a50837e4d858a7612e8802273c578f6c4ba61ebbc59",
+    "training/scripts/download-conversation.py": "5e6349ebba14d45c6073825b92d106394c03de89c3470673a0ab57cc16355eec",
+    "scripts/check-mobile-conversation.py": "a5fe4b57572ae8b433228e10c7c1180596f9629070cd4ff616ee823501e59d26",
+    "mobile/conversation-cases.json": "d43e0aa1abcc6009311dea3ccfcb8298b32be0c9a75c825e874f3dede85bca26",
+    "mobile/worker.js": "5fbcce2c4fb3d66046cbd8a413cb1bbd543c08f3d290b95df3ad94fed8db99d4"
+  },
+  "site_source_commit": "fa2fdf6da2f9a5800ca2b7a7ef519f34be9c1188",
+  "deployment_id": "appgdep_6acc56580e588191940a773d38c95dc8",
+  "validation": {
+    "node_tests": 200,
+    "python_tests": 35,
+    "final_prompt_related_node_tests": 14,
+    "typecheck": "passed",
+    "worker_validation": "passed",
+    "published_html_model_label_and_mobile_viewport": "passed",
+    "physical_phone_or_browser_automation": false
+  }
+}

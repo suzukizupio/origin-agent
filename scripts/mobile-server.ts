@@ -4,15 +4,16 @@ import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { Agent } from "../src/agent.ts";
 import { createOriginProvider } from "../src/providers/origin.ts";
+import { CONVERSATION_MODEL, conversationHost, createOriginConversationProvider } from "../src/providers/origin-conversation.ts";
 import { runPractice, recipe } from "./model-curriculum.ts";
 import { runRecovery } from "./recovery-curriculum.ts";
 import type { AgentEvent, Message, Provider } from "../src/types.ts";
 
 type Job = { id: string; kind: "chat" | "ordinary" | "recovery"; variant: "baseline" | "candidate";
   status: "running" | "completed" | "failed"; started: number; events: AgentEvent[]; input: string;
-  before?: string; after?: string; ok?: boolean; answer?: string; reason?: string; durationMs?: number };
+  model: string; before?: string; after?: string; ok?: boolean; answer?: string; reason?: string; durationMs?: number };
 
-export function createMobileServer(token: string, providerFactory: (variant: string, kind: Job["kind"]) => Provider = (variant, kind) => createOriginProvider({ variant, conversationOnly: kind === "chat" })) {
+export function createMobileServer(token: string, providerFactory: (variant: string, kind: Job["kind"]) => Provider = (variant, kind) => kind === "chat" ? createOriginConversationProvider() : createOriginProvider({ variant })) {
   if (!/^[a-f0-9]{64}$/.test(token)) throw new Error("A 256-bit access token is required");
   const jobs = new Map<string, Job>();
   let active = false;
@@ -30,12 +31,19 @@ export function createMobileServer(token: string, providerFactory: (variant: str
     if (!authorized(req)) { send(res, 401, { error: "認証が必要です。" }); return; }
     const url = new URL(req.url ?? "/", "http://localhost");
     if (req.method === "GET" && url.pathname === "/health") {
-      try {
-        const response = await fetch("http://127.0.0.1:18080/health", { signal: AbortSignal.timeout(3000) });
-        const health = await response.json() as { ready?: boolean; adapter_sha256?: string };
-        send(res, response.ok ? 200 : 503, { ready: health.ready === true, busy: active,
-          model: "Origin-Coder recovery", adapter_sha256: health.adapter_sha256 });
-      } catch { send(res, 503, { ready: false, error: "モデルが停止しています。" }); }
+      const readHealth = async (host: string) => {
+        try {
+          const response = await fetch(host + "/health", { signal: AbortSignal.timeout(3000) });
+          const data = await response.json() as { ready?: boolean; base_repository?: string; base_sha256?: string; adapter_sha256?: string | null };
+          return { ready: response.ok && data.ready === true, base_repository: data.base_repository,
+            base_sha256: data.base_sha256, adapter_sha256: data.adapter_sha256 };
+        } catch { return { ready: false }; }
+      };
+      const [code, chat] = await Promise.all([readHealth("http://127.0.0.1:18080"), readHealth(conversationHost())]);
+      code.ready = code.ready && typeof code.adapter_sha256 === "string";
+      chat.ready = chat.ready && chat.base_repository === CONVERSATION_MODEL && chat.adapter_sha256 === null;
+      send(res, 200, { ready: code.ready && chat.ready, busy: active, model: "Origin Pocket",
+        adapter_sha256: code.adapter_sha256, models: { code: { ...code, model: "Origin-Coder recovery" }, chat: { ...chat, model: CONVERSATION_MODEL } } });
       return;
     }
     if (req.method === "GET" && /^\/jobs\/[a-f0-9-]{36}$/.test(url.pathname)) {
@@ -56,7 +64,8 @@ export function createMobileServer(token: string, providerFactory: (variant: str
       while (jobs.size >= 20) jobs.delete(jobs.keys().next().value!);
       const seed = nextSeed++; if (nextSeed > 9999) nextSeed = 3000;
       const task = recipe(seed);
-      const job: Job = { id: randomUUID(), kind: body.kind as Job["kind"], variant: body.variant as Job["variant"],
+      const job: Job = { id: randomUUID(), kind: body.kind as Job["kind"], variant: body.kind === "chat" ? "baseline" : body.variant as Job["variant"],
+        model: body.kind === "chat" ? CONVERSATION_MODEL : "Origin-Coder recovery",
         status: "running", started: Date.now(), events: [], input: body.kind === "chat" ? body.input! : task.input,
         before: body.kind === "chat" ? undefined : task.before };
       jobs.set(job.id, job); active = true;

@@ -42,7 +42,7 @@ export function createOriginProvider(opts: { variant?: string; host?: string; ti
       // A tool-free conversation must not advertise search, CLI commands or tool syntax.
       // Keep the coding/SFT representation unchanged.
       const requestMessages: OriginMessage[] = opts.conversationOnly ? [
-        { role: "system", content: "あなたは日本語のアシスタントOriginです。ユーザーのメッセージに、自然で短い日本語で直接答えてください。挨拶には挨拶を返します。道具は使えません。" },
+        { role: "system", content: "You are Origin, a helpful assistant. Respond in natural Japanese, usually in 2-3 sentences. Answer the user directly. For greetings, return a brief friendly greeting. Never repeat the user's question or ask about their abilities. Your capabilities are writing, summarizing, explanations, and suggesting code fixes. You can only reply with text; you cannot browse the web, run code, or access files. Do not claim otherwise. Use conversation history to answer about the user. When a code edit fails, preserve existing changes, inspect the error and current code, propose a minimal fix, and check it with tests; do not blindly restore old versions. Admit uncertainty." },
         ...messages.map((message) => ({ role: message.role as "user" | "assistant", content: message.content })),
       ] : originMessages(messages, tools, env);
       const started = performance.now();

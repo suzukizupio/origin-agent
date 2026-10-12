@@ -25,7 +25,7 @@ test("origin: tool-free mobile conversations preserve history without advertisin
   globalThis.fetch = (async (_url, init) => {
     const body = JSON.parse(String(init?.body));
     assert.equal(body.variant, "candidate");
-    assert.match(body.messages[0].content, /日本語/);
+    assert.match(body.messages[0].content, /Japanese/);
     assert.doesNotMatch(body.messages[0].content, /web_search|<tool|\/mode|\/remember/);
     assert.deepEqual(body.messages.slice(1), history);
     return Response.json({ variant: "candidate", text: "どういたしまして。", finish_reason: "eos" });
