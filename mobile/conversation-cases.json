@@ -162,5 +162,94 @@
       "油を沸騰させ",
       "油が沸騰したら"
     ]
+  },
+  {
+    "id": "date-after-greeting",
+    "timeZone": "Asia/Tokyo",
+    "history": [
+      {
+        "role": "user",
+        "content": "こんにちわ"
+      },
+      {
+        "role": "assistant",
+        "content": "こんにちは！どうされましたか？何かお手伝いできることがありましたら、いつでもお知らせくださいね。"
+      }
+    ],
+    "input": "今日はいつですか？",
+    "all": [],
+    "calendar": {
+      "offset": 0,
+      "format": "date"
+    }
+  },
+  {
+    "id": "date-weekday",
+    "timeZone": "Asia/Tokyo",
+    "input": "今日は何曜日ですか？",
+    "all": [],
+    "calendar": {
+      "offset": 0,
+      "format": "weekday"
+    }
+  },
+  {
+    "id": "date-tomorrow",
+    "timeZone": "Asia/Tokyo",
+    "input": "明日は何月何日ですか？",
+    "all": [],
+    "calendar": {
+      "offset": 1,
+      "format": "month-day"
+    }
+  },
+  {
+    "id": "date-yesterday",
+    "timeZone": "Asia/Tokyo",
+    "input": "昨日は何月何日ですか？",
+    "all": [],
+    "calendar": {
+      "offset": -1,
+      "format": "month-day"
+    }
+  },
+  {
+    "id": "date-los-angeles",
+    "timeZone": "America/Los_Angeles",
+    "input": "今日はいつですか？",
+    "all": [],
+    "calendar": {
+      "offset": 0,
+      "format": "date"
+    }
+  },
+  {
+    "id": "date-stale-history",
+    "timeZone": "Asia/Tokyo",
+    "history": [
+      {
+        "role": "user",
+        "content": "今日はいつですか？"
+      },
+      {
+        "role": "assistant",
+        "content": "今日は2024年4月20日です。"
+      }
+    ],
+    "input": "本当に今日の日付ですか？正しい日付を教えてください。",
+    "all": [],
+    "calendar": {
+      "offset": 0,
+      "format": "date"
+    }
+  },
+  {
+    "id": "date-legacy-utc",
+    "input": "今日はいつですか？",
+    "all": [],
+    "calendar": {
+      "offset": 0,
+      "format": "date"
+    }
   }
 ]

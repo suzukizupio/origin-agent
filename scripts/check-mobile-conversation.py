@@ -11,7 +11,8 @@ import time
 import unicodedata
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 if sys.stdin.isatty():
     import termios
@@ -24,6 +25,10 @@ base = config['url'].rstrip('/')
 headers = {'OAI-Sites-Authorization': 'Bearer ' + config['token'], 'Content-Type': 'application/json'}
 root = Path(__file__).resolve().parents[1]
 cases = json.loads((root / 'mobile/conversation-cases.json').read_text())
+if config.get('case_ids'):
+    selected = set(config['case_ids'])
+    cases = [case for case in cases if case['id'] in selected]
+    assert len(cases) == len(selected), 'Unknown or duplicate case IDs'
 
 def request(path, value=None):
     body = json.dumps(value).encode() if value is not None else None
@@ -40,12 +45,12 @@ health = request('/api/health')
 assert health['models']['chat']['ready']
 assert health['models']['chat']['model'] == 'unsloth/Qwen3-4B-Instruct-2507-GGUF'
 report = {'checked_at':datetime.now(timezone.utc).isoformat(), 'site':base, 'health':health, 'cases':[],
-          'scope':'Fixed UI questions, paraphrase, multi-turn context, summary and a request for live information; not a broad capability benchmark.'}
+          'scope':'Fixed conversation regressions, including server-clock calendar answers; not a broad capability benchmark.'}
 print(json.dumps({'health':health}), flush=True)
 previous = []
 for case in cases:
     history = previous if case.get('continue_from_previous') else case.get('history',[])
-    started = request('/api/jobs', {'kind':'chat', 'variant':'baseline', 'input':case['input'], 'history':history})
+    started = request('/api/jobs', {'kind':'chat', 'variant':'baseline', 'input':case['input'], 'history':history, **({'timeZone':case['timeZone']} if 'timeZone' in case else {})})
     deadline = time.monotonic() + 210
     while time.monotonic() < deadline:
         job = request('/api/jobs/' + started['id'])
@@ -59,7 +64,15 @@ for case in cases:
         and len(answer.strip()) <= case.get('max_chars', 10000)
         and len([s for s in re.split(r'[。!?！？]+', answer) if s.strip()]) <= case.get('max_sentences', 10000)
         and not any(word in normalized for word in case.get('forbidden', [])))
-    result = {**case, 'history':history, 'answer':answer, 'reason':job.get('reason'), 'duration_ms':job.get('durationMs'), 'structure_ok':structure_ok, 'content_checks_ok':content_ok}
+    if 'calendar' in case:
+        target = datetime.fromtimestamp(job['started'] / 1000, ZoneInfo(case.get('timeZone', 'UTC'))).date() + timedelta(days=case['calendar']['offset'])
+        expected = (['月曜日','火曜日','水曜日','木曜日','金曜日','土曜日','日曜日'][target.weekday()]
+            if case['calendar']['format'] == 'weekday' else
+            (f'{target.year}年' if case['calendar']['format'] == 'date' else '') + f'{target.month}月{target.day}日')
+        content_ok = content_ok and expected in normalized and job['timeZone'] == case.get('timeZone', 'UTC')
+    else:
+        expected = None
+    result = {**case, 'history':history, 'answer':answer, 'reason':job.get('reason'), 'duration_ms':job.get('durationMs'), 'expected_calendar':expected, 'server_started_ms':job.get('started'), 'effective_time_zone':job.get('timeZone'), 'structure_ok':structure_ok, 'content_checks_ok':content_ok}
     previous = [*history, {'role':'user','content':case['input']}, {'role':'assistant','content':answer[:1000]}][-6:]
     report['cases'].append(result)
     print(json.dumps(result, ensure_ascii=False), flush=True)

@@ -5,15 +5,16 @@ import { createInterface } from "node:readline";
 import { Agent } from "../src/agent.ts";
 import { createOriginProvider } from "../src/providers/origin.ts";
 import { CONVERSATION_MODEL, conversationHost, createOriginConversationProvider } from "../src/providers/origin-conversation.ts";
+import { conversationTimeZone } from "../src/providers/conversation-clock.ts";
 import { runPractice, recipe } from "./model-curriculum.ts";
 import { runRecovery } from "./recovery-curriculum.ts";
 import type { AgentEvent, Message, Provider } from "../src/types.ts";
 
 type Job = { id: string; kind: "chat" | "ordinary" | "recovery"; variant: "baseline" | "candidate";
   status: "running" | "completed" | "failed"; started: number; events: AgentEvent[]; input: string;
-  model: string; before?: string; after?: string; ok?: boolean; answer?: string; reason?: string; durationMs?: number };
+  model: string; timeZone?: string; before?: string; after?: string; ok?: boolean; answer?: string; reason?: string; durationMs?: number };
 
-export function createMobileServer(token: string, providerFactory: (variant: string, kind: Job["kind"]) => Provider = (variant, kind) => kind === "chat" ? createOriginConversationProvider() : createOriginProvider({ variant })) {
+export function createMobileServer(token: string, providerFactory: (variant: string, kind: Job["kind"], timeZone: string) => Provider = (variant, kind, timeZone) => kind === "chat" ? createOriginConversationProvider({ timeZone }) : createOriginProvider({ variant })) {
   if (!/^[a-f0-9]{64}$/.test(token)) throw new Error("A 256-bit access token is required");
   const jobs = new Map<string, Job>();
   let active = false;
@@ -54,9 +55,10 @@ export function createMobileServer(token: string, providerFactory: (variant: str
     let size = 0; const chunks: Buffer[] = [];
     try {
       for await (const chunk of req) { size += chunk.length; if (size > 12000) throw new Error("入力が長すぎます。"); chunks.push(chunk); }
-      const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { kind?: string; variant?: string; input?: string; history?: Message[] };
+      const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { kind?: string; variant?: string; input?: string; history?: Message[]; timeZone?: unknown };
       if (!["chat", "ordinary", "recovery"].includes(body.kind ?? "") || !["baseline", "candidate"].includes(body.variant ?? "")) throw new Error("課題とモデルを選んでください。");
       if (body.kind === "chat" && (typeof body.input !== "string" || !body.input.trim() || body.input.length > 1000)) throw new Error("メッセージは1〜1000文字です。");
+      const timeZone = body.kind === "chat" ? conversationTimeZone(body.timeZone) : "UTC";
       if (body.history !== undefined && (!Array.isArray(body.history) || body.history.length > 8 || body.history.some((m) =>
         !["user", "assistant"].includes(m.role) || typeof m.content !== "string" || m.content.length > 1000))) throw new Error("会話履歴が不正です。");
       if (active) { send(res, 409, { error: "ほかの実行が終わるまでお待ちください。" }); return; }
@@ -66,6 +68,7 @@ export function createMobileServer(token: string, providerFactory: (variant: str
       const task = recipe(seed);
       const job: Job = { id: randomUUID(), kind: body.kind as Job["kind"], variant: body.kind === "chat" ? "baseline" : body.variant as Job["variant"],
         model: body.kind === "chat" ? CONVERSATION_MODEL : "Origin-Coder recovery",
+        timeZone: body.kind === "chat" ? timeZone : undefined,
         status: "running", started: Date.now(), events: [], input: body.kind === "chat" ? body.input! : task.input,
         before: body.kind === "chat" ? undefined : task.before };
       jobs.set(job.id, job); active = true;
@@ -73,7 +76,7 @@ export function createMobileServer(token: string, providerFactory: (variant: str
       void (async () => {
         const emit = (event: AgentEvent) => { if (job.events.length < 120) job.events.push(event); };
         try {
-          const provider = providerFactory(job.variant, job.kind);
+          const provider = providerFactory(job.variant, job.kind, timeZone);
           if (job.kind === "chat") {
             const agent = new Agent({ provider, mode: "chat", tools: [], maxSteps: 1,
               ctx: { root: "", confirm: async () => false } });

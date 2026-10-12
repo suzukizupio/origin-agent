@@ -1,5 +1,6 @@
 import { buildSystemPrompt } from "../protocol.ts";
 import { ProviderTimeoutError } from "../types.ts";
+import { conversationCalendar, conversationTimeZone } from "./conversation-clock.ts";
 import type { AgentEnv, Message, Provider, Tool } from "../types.ts";
 
 export type OriginMessage = { role: "system" | "user" | "assistant"; content: string };
@@ -26,10 +27,11 @@ export function originHost(host = process.env.ORIGIN_MODEL_HOST ?? "http://127.0
   return url.origin;
 }
 
-export function createOriginProvider(opts: { variant?: string; host?: string; timeoutMs?: number; conversationOnly?: boolean } = {}): Provider {
+export function createOriginProvider(opts: { variant?: string; host?: string; timeoutMs?: number; conversationOnly?: boolean; timeZone?: string; now?: () => Date } = {}): Provider {
   const variant = opts.variant ?? "candidate";
   if (variant !== "baseline" && variant !== "candidate") throw new Error("origin の --model は baseline または candidate です。");
   const host = originHost(opts.host);
+  const timeZone = opts.conversationOnly ? conversationTimeZone(opts.timeZone) : "UTC";
   const timeout = opts.timeoutMs ?? Number(process.env.ORIGIN_MODEL_TIMEOUT_MS ?? 120_000);
   if (!Number.isFinite(timeout) || timeout <= 0) throw new Error("Origin Model の待ち時間は正のミリ秒で指定してください。");
   return {
@@ -45,6 +47,9 @@ export function createOriginProvider(opts: { variant?: string; host?: string; ti
         { role: "system", content: "You are Origin, a helpful assistant. Respond in natural Japanese, usually in 2-3 sentences. Answer the user directly. For greetings, return a brief friendly greeting. Never repeat the user's question or ask about their abilities. Your capabilities are writing, summarizing, explanations, and suggesting code fixes. You can only reply with text; you cannot browse the web, run code, or access files. Do not claim otherwise. Use conversation history to answer about the user. When a code edit fails, preserve existing changes, inspect the error and current code, propose a minimal fix, and check it with tests; do not blindly restore old versions. Admit uncertainty." },
         ...messages.map((message) => ({ role: message.role as "user" | "assistant", content: message.content })),
       ] : originMessages(messages, tools, env);
+      if (opts.conversationOnly) {
+        requestMessages[0]!.content += "\n\n" + conversationCalendar(opts.now?.() ?? new Date(), timeZone);
+      }
       const started = performance.now();
       let response: Response;
       let raw: string;

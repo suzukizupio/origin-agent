@@ -22,8 +22,8 @@ export function isQuestionEcho(question: string, answer: string): boolean {
   return row[b.length]! / Math.max(a.length, b.length) <= 0.15;
 }
 
-export function createOriginConversationProvider(): Provider {
-  const provider = createOriginProvider({ host: conversationHost(), variant: "baseline", conversationOnly: true });
+export function createOriginConversationProvider(opts: { timeZone?: string; now?: () => Date } = {}): Provider {
+  const provider = createOriginProvider({ host: conversationHost(), variant: "baseline", conversationOnly: true, ...opts });
   return {
     ...provider,
     name: `origin-chat:${CONVERSATION_MODEL}`,
