@@ -2,6 +2,40 @@
 
 既存の TypeScript Agent・Provider・Memory・Tools・Evaluation を維持し、評価履歴を Python 側で学習資産へ変換する。Phase 1 は標準ライブラリだけで動くデータ基盤、Phase 2 は実際の LoRA 学習・ローカル推論・同一 Agent でのモデル比較。
 
+## 編集失敗からの復帰を学習する
+
+`recovery-curriculum.ts` は、ファイルの読み取り後に別の操作で同等の実装へ更新され、古い置換文字列での編集が拒否された状況を作る。その後の「現在のファイルを読む → 実物に合う編集 → テスト → 完了」の4応答を、実際の Agent・Tools と同じ Provider 入力で記録する。最初の読み取りと拒否された編集は固定の前提で、学習の正解ターゲットには含めない。失敗の履歴は文脈として保持し、損失は最後の正しい応答だけに掛ける。
+
+通常の一次式修正6課題・24応答と、復帰4課題・16応答を混ぜて学習する。検証は別の通常2課題・復帰2課題の全16応答。全教材で固定テストの通過、隣の関数・テストファイルの保持、Agent によるテスト実行、正常終了を確認してから保存する。既存の tune / holdout は教材として参照しない。
+
+```bash
+# リポジトリのルート。基盤の環境構築・固定ベースモデル取得は Phase 2 と共通。
+node scripts/recovery-curriculum.ts generate training/data/recovery
+training/.venv/bin/python training/scripts/train-lora.py --config training/configs/recovery.yaml --check
+training/.venv/bin/python training/scripts/train-lora.py --config training/configs/recovery.yaml
+
+# 別のターミナル。取得済みモデルを使用し、構文制約は付けない。
+training/.venv/bin/python training/scripts/serve-model.py --adapter training/models/Origin-Coder-recovery-experiment --threads 2 --generation-timeout 90
+
+# 同じベースモデルで、LoRA 無効の baseline と有効の candidate を比較。
+training/.venv/bin/python training/scripts/evaluate-model.py --curriculum recovery --tasks 2 --output training/experiments/recovery-tune
+training/.venv/bin/python training/scripts/evaluate-model.py --curriculum affine --tasks 2 --output training/experiments/recovery-affine
+```
+
+Windows は `training/.venv/bin/python` を `training/.venv/Scripts/python.exe` に置き換える。既存の保存先は上書きしない。再学習時は教材の新しい保存先を指定し、設定ファイルの入力・出力も更新する。学習済みモデルを使う場合はサーバー起動後に `npm start -- --provider origin --model candidate --mode code --root <作業フォルダー>` を実行する。
+
+復帰の評価は、両モデルに同じ固定の失敗前提2ステップを渡してからモデルに続きを生成させる。予定した正しい置換先の式は失敗操作に含まれているため、この評価だけで式を推理する能力の改善とは判断しない。更新後のファイルを読み直さなかった場合、テストを実行しなかった場合、修正が不正確な場合、未完了の場合は失敗とする。これは編集失敗後の継続能力を測る小規模な tune 評価で、最初からの自律的な作業全体や未使用 holdout の評価とは区別する。課題ごとの履歴・モデルとコードのハッシュ・生成条件は比較レポートに保存する。
+
+この設定は既存の Phase 2 / 3 アダプターを上書きせず、ベースモデルから別の実験として学習する。過去の学習済みアダプターとの優劣を示す比較ではない。
+
+`recovery.yaml` は CPU 2スレッド・bfloat16 で48ステップ学習する。bfloat16 の演算に対応した CPU では学習時間とメモリを抑えられる。推論サーバーは既定で候補の学習記録から数値形式を読み、比較対象と候補の両方に同じ形式を使う。既存の設定・学習記録は float32 を維持する。`--dtype float32` で明示的に変更した場合は別条件の測定として扱う。
+
+### 2026-10-11 の実機結果
+
+同じベースモデルで LoRA の無効・有効を切り替え、構文制約なしの greedy 生成で比較した。復帰2課題は0/2 → 2/2、最初から取り組む通常編集2課題も0/2 → 2/2。全16検証応答の平均損失は0.915314 → 0.068698。48ステップで40種類のターゲットすべてを使用した。これは前述の小規模な tune 評価で、未使用 holdout と広いリポジトリ修正の成績は未確認。
+
+設定・データ・重みのハッシュ、学習環境、両評価の生成条件と集計は [比較記録](../results/2026-10-11-recovery-training.json) に保存した。Node 192件、Python 31件、型チェックが通過した。
+
 ## Phase 3: ローカル Teacher による応答蒸留
 
 導入済みの `qwen2.5-coder:7b` を教師にし、範囲制限（clamp）と境界判定（threshold）の編集案を作る。教師への入力は新しく作る train / validation の課題と実ファイルの内容。Teacher は編集の JSON 引数を生成し、固定テストと隣の関数の保持を確認できた `edit_file` 応答だけを蒸留ターゲットにする。読み込み・テスト・完了回答は固定手順で実行する。教師の推論過程は収集しない。

@@ -1,0 +1,255 @@
+[
+  {
+    "id": "capabilities",
+    "input": "こんにちは。あなたは何ができますか？",
+    "all": [
+      [
+        "要約"
+      ],
+      [
+        "コード"
+      ],
+      [
+        "文章",
+        "文書"
+      ]
+    ]
+  },
+  {
+    "id": "edit-recovery",
+    "continue_from_previous": true,
+    "input": "コードの編集が失敗したとき、どうやって立て直しますか？",
+    "all": [
+      [
+        "確認",
+        "調べ"
+      ],
+      [
+        "エラー",
+        "原因"
+      ],
+      [
+        "修正",
+        "直し"
+      ]
+    ]
+  },
+  {
+    "id": "testing",
+    "continue_from_previous": true,
+    "input": "プログラミングのテストが大切な理由を、短く説明してください。",
+    "all": [
+      [
+        "問題",
+        "バグ",
+        "エラー"
+      ],
+      [
+        "確認",
+        "発見",
+        "品質"
+      ]
+    ]
+  },
+  {
+    "id": "greeting",
+    "input": "こんにちわ",
+    "all": [
+      [
+        "こんにちは"
+      ]
+    ]
+  },
+  {
+    "id": "paraphrase",
+    "input": "どんな手伝いをお願いできますか？",
+    "all": [
+      [
+        "文章",
+        "文書",
+        "要約",
+        "コード",
+        "説明"
+      ]
+    ]
+  },
+  {
+    "id": "user-name",
+    "history": [
+      {
+        "role": "user",
+        "content": "私の名前はカナです。"
+      },
+      {
+        "role": "assistant",
+        "content": "カナさん、よろしくお願いします。"
+      }
+    ],
+    "input": "私の名前は何ですか？",
+    "all": [
+      [
+        "カナ"
+      ]
+    ]
+  },
+  {
+    "id": "followup",
+    "history": [
+      {
+        "role": "user",
+        "content": "テストは何のために行いますか？"
+      },
+      {
+        "role": "assistant",
+        "content": "テストは、プログラムが期待どおりに動作するかを確かめ、問題を早く見つけるために行います。"
+      }
+    ],
+    "input": "もっと短く一文で教えてください。",
+    "all": [
+      [
+        "動作",
+        "問題",
+        "不具合",
+        "バグ",
+        "エラー",
+        "誤り"
+      ]
+    ],
+    "max_sentences": 1
+  },
+  {
+    "id": "summary",
+    "input": "次の文章を短くしてください。「明日の会議は午前10時から始まります。場所は第2会議室です。」",
+    "all": [
+      [
+        "10時"
+      ],
+      [
+        "第2会議室",
+        "第二会議室"
+      ]
+    ],
+    "max_chars": 30
+  },
+  {
+    "id": "no-live-data",
+    "input": "今の東京の天気を調べてください。",
+    "all": [
+      [
+        "できません",
+        "持っていません",
+        "分かりません",
+        "わかりません"
+      ]
+    ]
+  },
+  {
+    "id": "everyday-question",
+    "input": "卵を焼くときに焦がさないコツは？",
+    "all": [
+      [
+        "弱火",
+        "中火",
+        "低温",
+        "温度",
+        "火加減",
+        "火を弱",
+        "火の強さを弱"
+      ]
+    ],
+    "forbidden": [
+      "油が沸騰するまで",
+      "油を沸騰させ",
+      "油が沸騰したら"
+    ]
+  },
+  {
+    "id": "date-after-greeting",
+    "timeZone": "Asia/Tokyo",
+    "history": [
+      {
+        "role": "user",
+        "content": "こんにちわ"
+      },
+      {
+        "role": "assistant",
+        "content": "こんにちは！どうされましたか？何かお手伝いできることがありましたら、いつでもお知らせくださいね。"
+      }
+    ],
+    "input": "今日はいつですか？",
+    "all": [],
+    "calendar": {
+      "offset": 0,
+      "format": "date"
+    }
+  },
+  {
+    "id": "date-weekday",
+    "timeZone": "Asia/Tokyo",
+    "input": "今日は何曜日ですか？",
+    "all": [],
+    "calendar": {
+      "offset": 0,
+      "format": "weekday"
+    }
+  },
+  {
+    "id": "date-tomorrow",
+    "timeZone": "Asia/Tokyo",
+    "input": "明日は何月何日ですか？",
+    "all": [],
+    "calendar": {
+      "offset": 1,
+      "format": "month-day"
+    }
+  },
+  {
+    "id": "date-yesterday",
+    "timeZone": "Asia/Tokyo",
+    "input": "昨日は何月何日ですか？",
+    "all": [],
+    "calendar": {
+      "offset": -1,
+      "format": "month-day"
+    }
+  },
+  {
+    "id": "date-los-angeles",
+    "timeZone": "America/Los_Angeles",
+    "input": "今日はいつですか？",
+    "all": [],
+    "calendar": {
+      "offset": 0,
+      "format": "date"
+    }
+  },
+  {
+    "id": "date-stale-history",
+    "timeZone": "Asia/Tokyo",
+    "history": [
+      {
+        "role": "user",
+        "content": "今日はいつですか？"
+      },
+      {
+        "role": "assistant",
+        "content": "今日は2024年4月20日です。"
+      }
+    ],
+    "input": "本当に今日の日付ですか？正しい日付を教えてください。",
+    "all": [],
+    "calendar": {
+      "offset": 0,
+      "format": "date"
+    }
+  },
+  {
+    "id": "date-legacy-utc",
+    "input": "今日はいつですか？",
+    "all": [],
+    "calendar": {
+      "offset": 0,
+      "format": "date"
+    }
+  }
+]

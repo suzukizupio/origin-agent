@@ -29,7 +29,10 @@ def validate_request(value: object, limit: int) -> dict:
 class Runtime:
     def __init__(self, args: argparse.Namespace):
         self.base = base_manifest(args.model)
-        self.torch, self.tokenizer, self.model = load_model(args.model, args.threads, args.device)
+        precision = getattr(args, "dtype", None)
+        if precision is None:
+            precision = adapter_manifest(args.adapter, self.base)["config"]["training"].get("dtype", "float32") if args.adapter else "float32"
+        self.torch, self.tokenizer, self.model = load_model(args.model, args.threads, args.device, precision)
         self.adapter_sha = None
         self.training_task_ids = []
         self.validation_task_ids = []
@@ -64,7 +67,7 @@ class Runtime:
             self.guidance = GuidedTools(self.tokenizer)
             guidance_identity = GUIDANCE
         self.identity = {"ready": True, "base_repository": self.base["repository"], "base_revision": self.base["revision"], "base_sha256": digest(self.base), "adapter_sha256": self.adapter_sha, "baseline_adapter_sha256": self.baseline_adapter_sha,
-            "variants": ["baseline", "candidate"] if args.adapter else ["baseline"], "device": args.device, "threads": args.threads,
+            "variants": ["baseline", "candidate"] if args.adapter else ["baseline"], "device": args.device, "dtype": precision, "threads": args.threads,
             "max_input_tokens": self.max_input, "max_output_tokens": self.max_output, "generation_timeout_sec": self.timeout, "training_task_ids": self.training_task_ids, "validation_task_ids": self.validation_task_ids,
             "generation": {"do_sample": False, "repetition_penalty": 1.0, "guidance": guidance_identity}}
 
@@ -132,6 +135,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=18080)
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
+    parser.add_argument("--dtype", choices=("float32", "bfloat16"), help="Default: candidate training dtype, or float32 without an adapter")
     parser.add_argument("--max-input-tokens", type=int, default=4096)
     parser.add_argument("--max-output-tokens", type=int, default=256)
     parser.add_argument("--generation-timeout", type=float, default=120)

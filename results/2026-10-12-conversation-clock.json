@@ -1,0 +1,313 @@
+{
+  "checked_at": "2026-10-12T03:54:32.899449+00:00",
+  "site": "https://origin-pocket-lab.smartghost64.chatgpt.site",
+  "health": {
+    "ready": true,
+    "busy": false,
+    "model": "Origin Pocket",
+    "adapter_sha256": "1d651989d76e8bfd482f89f126f25370d26d4500dd6ea60a9ff7b28365a289b5",
+    "models": {
+      "code": {
+        "ready": true,
+        "base_repository": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+        "base_sha256": "f6824be9d86d0fe1ec6279dfa7276f5a2515db724e8ea59d324c5b9e654f3be4",
+        "adapter_sha256": "1d651989d76e8bfd482f89f126f25370d26d4500dd6ea60a9ff7b28365a289b5",
+        "model": "Origin-Coder recovery"
+      },
+      "chat": {
+        "ready": true,
+        "base_repository": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+        "base_sha256": "e1522d848ef4efbe08e14cd74fc4c0af276ad6e7d13021e427dcc643a23ad20e",
+        "adapter_sha256": null,
+        "model": "unsloth/Qwen3-4B-Instruct-2507-GGUF"
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "capabilities",
+      "input": "こんにちは。あなたは何ができますか？",
+      "all": [
+        [
+          "要約"
+        ],
+        [
+          "コード"
+        ],
+        [
+          "文章",
+          "文書"
+        ]
+      ],
+      "history": [],
+      "answer": "こんにちは！私は文章の作成、要約、説明、コードの修正などをできます。何かご質問やお手伝いが必要ですか？",
+      "reason": null,
+      "duration_ms": 9185,
+      "expected_calendar": null,
+      "server_started_ms": 1791777273379,
+      "effective_time_zone": "UTC",
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "greeting",
+      "input": "こんにちわ",
+      "all": [
+        [
+          "こんにちは"
+        ]
+      ],
+      "history": [],
+      "answer": "こんにちは！今日は2026年10月12日、月曜日ですね。何かご質問やお手伝いが必要ですか？",
+      "reason": null,
+      "duration_ms": 3546,
+      "expected_calendar": null,
+      "server_started_ms": 1791777283177,
+      "effective_time_zone": "UTC",
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "no-live-data",
+      "input": "今の東京の天気を調べてください。",
+      "all": [
+        [
+          "できません",
+          "持っていません",
+          "分かりません",
+          "わかりません"
+        ]
+      ],
+      "history": [],
+      "answer": "申し訳ありません、現在の天気情報を提供することはできません。天気はリアルタイムで変化するため、最新の情報を得るには天気予報サイトやアプリをご利用ください。東京の天気を確認したい場合は、例えば「JMA（日本気象庁）」の公式サイトをご覧ください。",
+      "reason": null,
+      "duration_ms": 7504,
+      "expected_calendar": null,
+      "server_started_ms": 1791777287939,
+      "effective_time_zone": "UTC",
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "date-after-greeting",
+      "timeZone": "Asia/Tokyo",
+      "history": [
+        {
+          "role": "user",
+          "content": "こんにちわ"
+        },
+        {
+          "role": "assistant",
+          "content": "こんにちは！どうされましたか？何かお手伝いできることがありましたら、いつでもお知らせくださいね。"
+        }
+      ],
+      "input": "今日はいつですか？",
+      "all": [],
+      "calendar": {
+        "offset": 0,
+        "format": "date"
+      },
+      "answer": "今日は2026年10月12日、月曜日です。",
+      "reason": null,
+      "duration_ms": 9439,
+      "expected_calendar": "2026年10月12日",
+      "server_started_ms": 1791777297202,
+      "effective_time_zone": "Asia/Tokyo",
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "date-weekday",
+      "timeZone": "Asia/Tokyo",
+      "input": "今日は何曜日ですか？",
+      "all": [],
+      "calendar": {
+        "offset": 0,
+        "format": "weekday"
+      },
+      "history": [],
+      "answer": "今日は月曜日です。",
+      "reason": null,
+      "duration_ms": 1457,
+      "expected_calendar": "月曜日",
+      "server_started_ms": 1791777308506,
+      "effective_time_zone": "Asia/Tokyo",
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "date-tomorrow",
+      "timeZone": "Asia/Tokyo",
+      "input": "明日は何月何日ですか？",
+      "all": [],
+      "calendar": {
+        "offset": 1,
+        "format": "month-day"
+      },
+      "history": [],
+      "answer": "明日は2026年10月13日、火曜日です。",
+      "reason": null,
+      "duration_ms": 2710,
+      "expected_calendar": "10月13日",
+      "server_started_ms": 1791777311121,
+      "effective_time_zone": "Asia/Tokyo",
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "date-yesterday",
+      "timeZone": "Asia/Tokyo",
+      "input": "昨日は何月何日ですか？",
+      "all": [],
+      "calendar": {
+        "offset": -1,
+        "format": "month-day"
+      },
+      "history": [],
+      "answer": "昨日は2026年10月11日です。",
+      "reason": null,
+      "duration_ms": 2271,
+      "expected_calendar": "10月11日",
+      "server_started_ms": 1791777315828,
+      "effective_time_zone": "Asia/Tokyo",
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "date-los-angeles",
+      "timeZone": "America/Los_Angeles",
+      "input": "今日はいつですか？",
+      "all": [],
+      "calendar": {
+        "offset": 0,
+        "format": "date"
+      },
+      "history": [],
+      "answer": "今日は2026年10月11日、日曜日です。",
+      "reason": null,
+      "duration_ms": 7122,
+      "expected_calendar": "2026年10月11日",
+      "server_started_ms": 1791777318406,
+      "effective_time_zone": "America/Los_Angeles",
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "date-stale-history",
+      "timeZone": "Asia/Tokyo",
+      "history": [
+        {
+          "role": "user",
+          "content": "今日はいつですか？"
+        },
+        {
+          "role": "assistant",
+          "content": "今日は2024年4月20日です。"
+        }
+      ],
+      "input": "本当に今日の日付ですか？正しい日付を教えてください。",
+      "all": [],
+      "calendar": {
+        "offset": 0,
+        "format": "date"
+      },
+      "answer": "今日の日付は2026年10月12日です。ご質問ありがとうございます。",
+      "reason": null,
+      "duration_ms": 11100,
+      "expected_calendar": "2026年10月12日",
+      "server_started_ms": 1791777327573,
+      "effective_time_zone": "Asia/Tokyo",
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "date-legacy-utc",
+      "input": "今日はいつですか？",
+      "all": [],
+      "calendar": {
+        "offset": 0,
+        "format": "date"
+      },
+      "history": [],
+      "answer": "今日は2026年10月12日、月曜日です。",
+      "reason": null,
+      "duration_ms": 7672,
+      "expected_calendar": "2026年10月12日",
+      "server_started_ms": 1791777339444,
+      "effective_time_zone": "UTC",
+      "structure_ok": true,
+      "content_checks_ok": true
+    }
+  ],
+  "scope": "Seven published calendar regressions plus three adjacent conversation smoke cases, and five local real-model cases with explicitly simulated clock instants. These are targeted checks, not a broad accuracy evaluation.",
+  "requires_manual_review": false,
+  "passed": 10,
+  "manual_review": "All seven live-calendar answers matched the date/weekday calculated from the server timestamp in the selected time zone. Stale 2024 assistant history was corrected. Three adjacent smoke cases returned capabilities, a greeting and a refusal to claim live weather access.",
+  "before_fix": {
+    "checked_at": "2026-10-12T03:50:25.933Z",
+    "input": "今日はいつですか？",
+    "history": "Greeting history from the reported screenshot.",
+    "answer": "今日は2024年4月20日です。お忙しい中、質問ありがとうございます！"
+  },
+  "local_model_simulated_clock_cases": [
+    {
+      "zone": "Asia/Tokyo",
+      "now": "2026-12-31T15:30:00Z",
+      "input": "今日はいつですか？",
+      "expected": "2027年1月1日",
+      "answer": "今日は2027年1月1日、金曜日です。",
+      "passed": true
+    },
+    {
+      "zone": "America/Los_Angeles",
+      "now": "2026-12-31T15:30:00Z",
+      "input": "今日はいつですか？",
+      "expected": "2026年12月31日",
+      "answer": "今日は2026年12月31日、木曜日です。",
+      "passed": true
+    },
+    {
+      "zone": "Asia/Tokyo",
+      "now": "2026-12-31T15:30:00Z",
+      "input": "今日は何曜日ですか？",
+      "expected": "金曜日",
+      "answer": "今日は金曜日です。",
+      "passed": true
+    },
+    {
+      "zone": "Asia/Tokyo",
+      "now": "2026-12-31T15:30:00Z",
+      "input": "明日は何月何日ですか？",
+      "expected": "1月2日",
+      "answer": "明日は2027年1月2日です。",
+      "passed": true
+    },
+    {
+      "zone": "UTC",
+      "now": "2028-03-01T00:30:00Z",
+      "input": "昨日は何月何日ですか？",
+      "expected": "2月29日",
+      "answer": "昨日は2028年2月29日です。",
+      "passed": true
+    }
+  ],
+  "source_sha256": {
+    "src/providers/conversation-clock.ts": "b78d22a1d221eb5ce550956c1e7f7d6f0b638334696d22b3a8045392559c9606",
+    "src/providers/origin.ts": "c5da4b2eaf4deb5d515e56c3bb083c7409966ce0e62589838ddd7005c3694836",
+    "src/providers/origin-conversation.ts": "73430d94e79dfa25c0f7facd6e7d17094b2543fa8638db7b14e59256c0f65f7a",
+    "scripts/mobile-server.ts": "ddc5b7bbee201fd788036a7c3f8d3162830497c9b5a59e65c22b7c19913739bb",
+    "scripts/check-conversation-clock.ts": "a8aa0a534891fabbf59e9a6c51e03c1101439e71f8b02ec7961ca840e9c5674c",
+    "scripts/check-mobile-conversation.py": "ef8a5415d36011142d0f04dfe5344fb847bc8d76464602fe70e36f63f51f2363",
+    "mobile/conversation-cases.json": "6280c1d726aaf7d02a1e8fd156e53ae684249e9a6bb64a4ee4e2e874171fd176",
+    "mobile/worker.js": "2f536b265cb0debce9f03baeb193344a9a8b713b5924b3f778b8b77d80eaab6d"
+  },
+  "site_source_commit": "0100c77906415952faad66770d23a52cf6da416c",
+  "deployment_id": "appgdep_6acc59ce79c08191816405cd53d15cca",
+  "validation": {
+    "node_tests": 205,
+    "typecheck": "passed",
+    "worker_validation": "passed",
+    "published_html_timezone_payload": "passed",
+    "physical_phone_or_browser_automation": false
+  }
+}

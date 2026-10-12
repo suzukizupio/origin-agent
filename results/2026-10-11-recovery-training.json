@@ -1,0 +1,266 @@
+{
+  "version": 1,
+  "completed": true,
+  "created_at": "2026-10-11T21:38:16.382805+00:00",
+  "scope": "small_affine_edit_and_controlled_recovery_pilot",
+  "training": {
+    "model_name": "Origin-Coder-recovery-experiment",
+    "method": "lora",
+    "objective": "curated_sft",
+    "base": {
+      "files": {
+        "LICENSE": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+        "README.md": "50cd33dcab1f7b9d206d4691df527a419cfddadd0c4648b8d9bffd5a1b7a032d",
+        "config.json": "b1e58593cd31852f7da5c2fc31ddf6135b9c066c0fd9177a4bbe95717083adff",
+        "generation_config.json": "fdaccbcb02f3e1e7914ccb0f69ebe899071ffd27cf825166d823163e156870f2",
+        "merges.txt": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+        "model.safetensors": "f9523886352217ded3aeeef552b381af79d568c6d49a4b9e423288cea56b0a44",
+        "tokenizer.json": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "tokenizer_config.json": "959e7f1d9a1b7641a6d6ce05ca97b75c7894fcb66cbe5a040406458fb1128ee4",
+        "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "license": "apache-2.0",
+      "repository": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "revision": "ea3f2471cf1b1f0db85067f1ef93848e38e88c25",
+      "version": 1
+    },
+    "base_sha256": "f6824be9d86d0fe1ec6279dfa7276f5a2515db724e8ea59d324c5b9e654f3be4",
+    "adapter_sha256": "1d651989d76e8bfd482f89f126f25370d26d4500dd6ea60a9ff7b28365a289b5",
+    "datasets": {
+      "train_examples": 40,
+      "train_sha256": "564fa469f87d6fe4f4b1dc23cbec2e78c0298c411364a1e529fe3e9e733fca69",
+      "train_task_ids": [
+        "origin-practice-0",
+        "origin-practice-1",
+        "origin-practice-2",
+        "origin-practice-3",
+        "origin-practice-4",
+        "origin-practice-5",
+        "origin-recovery-20",
+        "origin-recovery-21",
+        "origin-recovery-22",
+        "origin-recovery-23"
+      ],
+      "validation_examples": 16,
+      "validation_sha256": "e81f7dbac4c2de25ba008207173885bbf5fb8ef195046bddd958bdf842c6256b",
+      "validation_task_ids": [
+        "origin-practice-100",
+        "origin-practice-101",
+        "origin-recovery-120",
+        "origin-recovery-121"
+      ]
+    },
+    "config": {
+      "base_model_path": "training/models/base-qwen-coder-0.5b",
+      "dataset": {
+        "holdout_allowed": false,
+        "representation": "provider_messages",
+        "train": "training/data/recovery/train.jsonl",
+        "validation": "training/data/recovery/validation.jsonl"
+      },
+      "lora": {
+        "alpha": 16,
+        "dropout": 0.0,
+        "rank": 8,
+        "target_modules": [
+          "q_proj",
+          "v_proj"
+        ]
+      },
+      "model_name": "Origin-Coder-recovery-experiment",
+      "output_dir": "training/models/Origin-Coder-recovery-experiment",
+      "schema_version": 2,
+      "training": {
+        "cpu_threads": 2,
+        "device": "cpu",
+        "dtype": "bfloat16",
+        "gradient_checkpointing": true,
+        "learning_rate": 0.0005,
+        "max_sequence_length": 4096,
+        "max_steps": 48,
+        "seed": 42,
+        "validation_examples": 16
+      }
+    },
+    "config_sha256": "e0200f6688640f2a57ce9b4a9ee99c929d7c3e4be6d2e1589a414a516c8db904",
+    "actual_steps": 48,
+    "runtime": {
+      "cpu_threads": 2,
+      "device": "cpu",
+      "dtype": "bfloat16",
+      "machine": "x86_64",
+      "peft": "0.17.1",
+      "python": "3.12.14",
+      "torch": "2.8.0+cpu",
+      "transformers": "4.56.2"
+    },
+    "validation_loss_before": 0.915313720703125,
+    "validation_loss_after": 0.06869816780090332,
+    "elapsed_sec": 1452.32
+  },
+  "unique_trained_targets": 40,
+  "comparisons": {
+    "recovery": {
+      "agent_source_sha256": "49263aa9903f7135571f487e1f3980680bd3542d785cb6ca59a7c467e5d59a2d",
+      "completed": true,
+      "created_at": "2026-10-11T21:35:03.326878+00:00",
+      "delta_task_success_rate": 1.0,
+      "fixture_steps": 2,
+      "holdout_used": false,
+      "improved": true,
+      "limitation": "Small same-family tune tasks; broader coding improvement and held-out generalization are not established. Recovery fixes the initial failed-operation prefix, including the intended replacement expression, for both models",
+      "machine": {
+        "cpu_count": 3,
+        "machine": "x86_64",
+        "processor": "",
+        "system": "Linux"
+      },
+      "metrics": {
+        "baseline": {
+          "passed": 0,
+          "task_success_rate": 0.0,
+          "total": 2
+        },
+        "candidate": {
+          "passed": 2,
+          "task_success_rate": 1.0,
+          "total": 2
+        }
+      },
+      "model": {
+        "adapter_sha256": "1d651989d76e8bfd482f89f126f25370d26d4500dd6ea60a9ff7b28365a289b5",
+        "base_repository": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+        "base_revision": "ea3f2471cf1b1f0db85067f1ef93848e38e88c25",
+        "base_sha256": "f6824be9d86d0fe1ec6279dfa7276f5a2515db724e8ea59d324c5b9e654f3be4",
+        "baseline_adapter_sha256": null,
+        "device": "cpu",
+        "dtype": "bfloat16",
+        "generation": {
+          "do_sample": false,
+          "guidance": null,
+          "repetition_penalty": 1.0
+        },
+        "generation_timeout_sec": 90.0,
+        "max_input_tokens": 4096,
+        "max_output_tokens": 256,
+        "ready": true,
+        "threads": 2,
+        "training_task_ids": [
+          "origin-practice-0",
+          "origin-practice-1",
+          "origin-practice-2",
+          "origin-practice-3",
+          "origin-practice-4",
+          "origin-practice-5",
+          "origin-recovery-20",
+          "origin-recovery-21",
+          "origin-recovery-22",
+          "origin-recovery-23"
+        ],
+        "validation_task_ids": [
+          "origin-practice-100",
+          "origin-practice-101",
+          "origin-recovery-120",
+          "origin-recovery-121"
+        ],
+        "variants": [
+          "baseline",
+          "candidate"
+        ]
+      },
+      "repeat": 1,
+      "request_timeout_sec": 120,
+      "scope": "controlled_edit_failure_continuation",
+      "split": "tune",
+      "status": "pilot_gain_measured",
+      "version": 1
+    },
+    "ordinary_edit": {
+      "agent_source_sha256": "49263aa9903f7135571f487e1f3980680bd3542d785cb6ca59a7c467e5d59a2d",
+      "completed": true,
+      "created_at": "2026-10-11T21:37:03.495399+00:00",
+      "delta_task_success_rate": 1.0,
+      "fixture_steps": 0,
+      "holdout_used": false,
+      "improved": true,
+      "limitation": "Small same-family tune tasks; broader coding improvement and held-out generalization are not established",
+      "machine": {
+        "cpu_count": 3,
+        "machine": "x86_64",
+        "processor": "",
+        "system": "Linux"
+      },
+      "metrics": {
+        "baseline": {
+          "passed": 0,
+          "task_success_rate": 0.0,
+          "total": 2
+        },
+        "candidate": {
+          "passed": 2,
+          "task_success_rate": 1.0,
+          "total": 2
+        }
+      },
+      "model": {
+        "adapter_sha256": "1d651989d76e8bfd482f89f126f25370d26d4500dd6ea60a9ff7b28365a289b5",
+        "base_repository": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+        "base_revision": "ea3f2471cf1b1f0db85067f1ef93848e38e88c25",
+        "base_sha256": "f6824be9d86d0fe1ec6279dfa7276f5a2515db724e8ea59d324c5b9e654f3be4",
+        "baseline_adapter_sha256": null,
+        "device": "cpu",
+        "dtype": "bfloat16",
+        "generation": {
+          "do_sample": false,
+          "guidance": null,
+          "repetition_penalty": 1.0
+        },
+        "generation_timeout_sec": 90.0,
+        "max_input_tokens": 4096,
+        "max_output_tokens": 256,
+        "ready": true,
+        "threads": 2,
+        "training_task_ids": [
+          "origin-practice-0",
+          "origin-practice-1",
+          "origin-practice-2",
+          "origin-practice-3",
+          "origin-practice-4",
+          "origin-practice-5",
+          "origin-recovery-20",
+          "origin-recovery-21",
+          "origin-recovery-22",
+          "origin-recovery-23"
+        ],
+        "validation_task_ids": [
+          "origin-practice-100",
+          "origin-practice-101",
+          "origin-recovery-120",
+          "origin-recovery-121"
+        ],
+        "variants": [
+          "baseline",
+          "candidate"
+        ]
+      },
+      "repeat": 1,
+      "request_timeout_sec": 120,
+      "scope": "generated_affine_function_pilot",
+      "split": "tune",
+      "status": "pilot_gain_measured",
+      "version": 1
+    }
+  },
+  "verification": {
+    "node_version": "v24.10.0",
+    "node_tests_passed": 192,
+    "python_tests_passed": 31,
+    "typecheck_passed": true
+  },
+  "limits": [
+    "Two generated tasks per scope, one attempt each, greedy generation without grammar constraints.",
+    "Recovery fixes the first read and rejected edit, including the intended replacement expression; only continuation is model-generated.",
+    "The comparator is the unadapted base model, not the earlier locally saved Phase 2/3 adapters.",
+    "Held-out generalization and broader repository repair have not been measured."
+  ]
+}

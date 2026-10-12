@@ -18,6 +18,25 @@ test("origin: selects local endpoints and never sends inference to external host
   for (const host of ["https://example.com", "http://example.com", "http://localhost/path", "http://user:pass@localhost", "http://localhost/?token=secret"]) assert.throws(() => originHost(host), /ローカル/);
 });
 
+test("origin: tool-free mobile conversations preserve history without advertising unavailable tools", async (t) => {
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  const history = [{ role: "user" as const, content: "こんにちわ" }, { role: "assistant" as const, content: "こんにちは" }, { role: "user" as const, content: "ありがとう" }];
+  globalThis.fetch = (async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    assert.equal(body.variant, "candidate");
+    assert.match(body.messages[0].content, /Japanese/);
+    assert.doesNotMatch(body.messages[0].content, /web_search|<tool|\/mode|\/remember/);
+    assert.deepEqual(body.messages.slice(1), history);
+    return Response.json({ variant: "candidate", text: "どういたしまして。", finish_reason: "eos" });
+  }) as typeof fetch;
+  const provider = createOriginProvider({ conversationOnly: true });
+  const env = { root: "", outline: "", mode: "chat" as const };
+  assert.equal(await provider.complete(history, [], env), "どういたしまして。");
+  await assert.rejects(() => provider.complete([{ role: "tool", content: "検索結果" }], [], env), /会話専用/);
+  await assert.rejects(() => provider.complete(history, [], { ...env, mode: "code" }), /会話専用/);
+});
+
 test("origin: completed generation passes text and metrics through the Provider interface", async (t) => {
   const original = globalThis.fetch;
   t.after(() => { globalThis.fetch = original; });

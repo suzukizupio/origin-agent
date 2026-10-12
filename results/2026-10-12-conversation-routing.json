@@ -1,0 +1,274 @@
+{
+  "checked_at": "2026-10-12T00:47:06.709342+00:00",
+  "site": "https://origin-pocket-lab.smartghost64.chatgpt.site",
+  "health": {
+    "ready": true,
+    "busy": false,
+    "model": "Origin Pocket",
+    "adapter_sha256": "1d651989d76e8bfd482f89f126f25370d26d4500dd6ea60a9ff7b28365a289b5",
+    "models": {
+      "code": {
+        "ready": true,
+        "base_repository": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+        "base_sha256": "f6824be9d86d0fe1ec6279dfa7276f5a2515db724e8ea59d324c5b9e654f3be4",
+        "adapter_sha256": "1d651989d76e8bfd482f89f126f25370d26d4500dd6ea60a9ff7b28365a289b5",
+        "model": "Origin-Coder recovery"
+      },
+      "chat": {
+        "ready": true,
+        "base_repository": "Qwen/Qwen2.5-1.5B-Instruct",
+        "base_sha256": "51ba9a4902c73c51834c9665d727773fed371c2fbd4d14f27fede54e921b1d9f",
+        "adapter_sha256": null,
+        "model": "Qwen/Qwen2.5-1.5B-Instruct"
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "capabilities",
+      "input": "こんにちは。あなたは何ができますか？",
+      "all": [
+        [
+          "要約"
+        ],
+        [
+          "コード"
+        ],
+        [
+          "文章",
+          "文書"
+        ]
+      ],
+      "history": [],
+      "answer": "私は日本語の会話アシスタントです。質問や要約、説明、コードの解説と修正案の提案など、その他の文書の作成もできます。",
+      "reason": null,
+      "duration_ms": 10805,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "edit-recovery",
+      "continue_from_previous": true,
+      "input": "コードの編集が失敗したとき、どうやって立て直しますか？",
+      "all": [
+        [
+          "確認",
+          "調べ"
+        ],
+        [
+          "エラー",
+          "原因"
+        ],
+        [
+          "修正",
+          "直し"
+        ]
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "こんにちは。あなたは何ができますか？"
+        },
+        {
+          "role": "assistant",
+          "content": "私は日本語の会話アシスタントです。質問や要約、説明、コードの解説と修正案の提案など、その他の文書の作成もできます。"
+        }
+      ],
+      "answer": "コードの編集が失敗した場合、まず最初に失敗したコードのエラーメッセージを確認します。エラーメッセージから原因を特定し、その原因を解決します。例えば、エラーが「SyntaxError: Unexpected token」の場合、おそらく関数や変数名の誤りや、関数の呼び出し順序の誤りなどが原因かもしれません。エラーメッセージを確認し、その原因を修正することで、問題が解決します。",
+      "reason": null,
+      "duration_ms": 27261,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "testing",
+      "continue_from_previous": true,
+      "input": "プログラミングのテストが大切な理由を、短く説明してください。",
+      "all": [
+        [
+          "問題",
+          "バグ",
+          "エラー"
+        ],
+        [
+          "確認",
+          "発見",
+          "品質"
+        ]
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "こんにちは。あなたは何ができますか？"
+        },
+        {
+          "role": "assistant",
+          "content": "私は日本語の会話アシスタントです。質問や要約、説明、コードの解説と修正案の提案など、その他の文書の作成もできます。"
+        },
+        {
+          "role": "user",
+          "content": "コードの編集が失敗したとき、どうやって立て直しますか？"
+        },
+        {
+          "role": "assistant",
+          "content": "コードの編集が失敗した場合、まず最初に失敗したコードのエラーメッセージを確認します。エラーメッセージから原因を特定し、その原因を解決します。例えば、エラーが「SyntaxError: Unexpected token」の場合、おそらく関数や変数名の誤りや、関数の呼び出し順序の誤りなどが原因かもしれません。エラーメッセージを確認し、その原因を修正することで、問題が解決します。"
+        }
+      ],
+      "answer": "テストは、プログラムの動作を確認し、問題を早期に発見するための重要な手段です。テストを通じて、プログラムが予期される動作を正確に実行しているかを確認し、プログラムの品質を向上させることができます。テストは、プログラムの安定性、信頼性、効率性を向上させ、開発者や管理者がプログラムの問題を早期に発見し、修正するのに役立ちます。",
+      "reason": null,
+      "duration_ms": 25332,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "greeting",
+      "input": "こんにちわ",
+      "all": [
+        [
+          "こんにちは"
+        ]
+      ],
+      "history": [],
+      "answer": "こんにちは！何かお手伝いできることがありましたら、お知らせください。",
+      "reason": null,
+      "duration_ms": 5175,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "paraphrase",
+      "input": "どんな手伝いをお願いできますか？",
+      "all": [
+        [
+          "文章",
+          "文書",
+          "要約",
+          "コード",
+          "説明"
+        ]
+      ],
+      "history": [],
+      "answer": "もちろんです、様々な手伝いを提供できます。例えば、文章の作成、要約、質問への説明、コードの解説と修正案の提案などがあります。どのようなお手伝いをお願いしますか？",
+      "reason": null,
+      "duration_ms": 13118,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "user-name",
+      "history": [
+        {
+          "role": "user",
+          "content": "私の名前はカナです。"
+        },
+        {
+          "role": "assistant",
+          "content": "カナさん、よろしくお願いします。"
+        }
+      ],
+      "input": "私の名前は何ですか？",
+      "all": [
+        [
+          "カナ"
+        ]
+      ],
+      "answer": "あなたの名前はカナです。",
+      "reason": null,
+      "duration_ms": 3728,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "followup",
+      "history": [
+        {
+          "role": "user",
+          "content": "テストは何のために行いますか？"
+        },
+        {
+          "role": "assistant",
+          "content": "テストは、プログラムが期待どおりに動作するかを確かめ、問題を早く見つけるために行います。"
+        }
+      ],
+      "input": "もっと短く一文で教えてください。",
+      "all": [
+        [
+          "動作",
+          "問題",
+          "不具合",
+          "バグ",
+          "エラー"
+        ]
+      ],
+      "answer": "テストはプログラムの動作を確認し、問題を早めに見つけるためです。",
+      "reason": null,
+      "duration_ms": 6456,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "summary",
+      "input": "次の文章を短くしてください。「明日の会議は午前10時から始まります。場所は第2会議室です。」",
+      "all": [
+        [
+          "10時"
+        ],
+        [
+          "第2会議室",
+          "第二会議室"
+        ]
+      ],
+      "history": [],
+      "answer": "明日の会議は午前10時から始まります。場所は第2会議室です。",
+      "reason": null,
+      "duration_ms": 7401,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "no-live-data",
+      "input": "今の東京の天気を調べてください。",
+      "all": [
+        [
+          "できません",
+          "持っていません",
+          "分かりません",
+          "わかりません"
+        ]
+      ],
+      "history": [],
+      "answer": "申し訳ありませんが、私はリアルタイムの天気情報を提供する機能を持っていません。現在の東京の天気を知りたい場合は、天気予報サイトやアプリをご覧いただくことをおすすめします。",
+      "reason": null,
+      "duration_ms": 11929,
+      "structure_ok": true,
+      "content_checks_ok": true
+    },
+    {
+      "id": "everyday-question",
+      "input": "卵を焼くときに焦がさないコツは？",
+      "all": [
+        [
+          "弱火",
+          "中火",
+          "低温",
+          "温度",
+          "火加減"
+        ]
+      ],
+      "history": [],
+      "answer": "卵を焼くときに焦がさないコツは、まず油を適切に温めることが重要です。油を熱さを保つために、油を適切な温度に加熱する時間を設定します。また、卵を焼く前に、油を温めながら卵を加えることで、焦げた卵を防ぐことができます。さらに、卵を焼くときに、油が沸騰するまでゆっくりと加熱するようにしましょう。",
+      "reason": null,
+      "duration_ms": 22986,
+      "structure_ok": true,
+      "content_checks_ok": true
+    }
+  ],
+  "scope": "Intermediate 1.5B experiment. Keyword checks passed but manual review found failures; superseded by subsequent model evaluation.",
+  "passed": 10,
+  "manual_review": {
+    "summary": "Failed: original text repeated instead of shortened.",
+    "everyday-question": "Failed: recommends waiting for oil to boil.",
+    "edit-recovery": "Weak: speculative explanation of SyntaxError is not reliable."
+  },
+  "accepted_for_final_release": false
+}

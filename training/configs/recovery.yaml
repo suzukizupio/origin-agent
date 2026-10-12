@@ -1,0 +1,24 @@
+schema_version: 2
+model_name: Origin-Coder-recovery-experiment
+base_model_path: training/models/base-qwen-coder-0.5b
+dataset:
+  train: training/data/recovery/train.jsonl
+  validation: training/data/recovery/validation.jsonl
+  holdout_allowed: false
+  representation: provider_messages
+training:
+  device: cpu
+  cpu_threads: 2
+  dtype: bfloat16
+  max_steps: 48
+  learning_rate: 0.0005
+  seed: 42
+  max_sequence_length: 4096
+  validation_examples: 16
+  gradient_checkpointing: true
+lora:
+  rank: 8
+  alpha: 16
+  dropout: 0.0
+  target_modules: [q_proj, v_proj]
+output_dir: training/models/Origin-Coder-recovery-experiment
