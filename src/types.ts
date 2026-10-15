@@ -86,6 +86,11 @@ export type Provider = {
    * 省略時は Agent の既定値。
    */
   contextBudget?: number;
+  /**
+   * 1回の指示で問い合わせてよい上限。省略時は Agent の既定値（12）。
+   * 小さいモデルは行き詰まると回り続けるので短く、長い作業をこなせる頭脳には長く取る。
+   */
+  maxSteps?: number;
   complete: (messages: Message[], tools: Tool[], env: AgentEnv, options?: CompletionOptions) => Promise<string>;
 };
 

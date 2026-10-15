@@ -54,6 +54,7 @@ function parseArgs(argv: string[]): Options {
           "使い方: node src/cli.ts [オプション]",
           "",
           `  --provider <名前>  頭脳を選ぶ (auto | ${providerNames.join(" | ")})。既定は auto`,
+          "                     auto は ANTHROPIC_API_KEY があれば claude、なければ ollama",
           "  --model <名前>     プロバイダに渡すモデル名",
           "  --mode <モード>    chat（会話・検索、既定）/ code（コーディングも可能）",
           "  --root <パス>      作業ルート。既定は現在のディレクトリ",
@@ -66,6 +67,11 @@ function parseArgs(argv: string[]): Options {
     } else throw new Error(`不明なオプション: ${arg}。--help で使い方を確認できます。`);
   }
   return opts;
+}
+
+/** 従量課金の頭脳を使っていることを、起動時と差し替え時に必ず見せる。 */
+function paidNotice(providerName: string): string {
+  return providerName.startsWith("claude:") ? "Anthropic API を使います。利用量に応じて料金がかかります。" : "";
 }
 
 const reply = new ReplyPrinter((text) => { stdout.write(text); });
@@ -173,8 +179,9 @@ async function main(): Promise<void> {
   stdout.write(
     [
       "",
-      c.bold("origin-agent") + c.dim(" v0.10.0"),
+      c.bold("origin-agent") + c.dim(" v0.11.0"),
       c.dim(`  頭脳: ${agent.provider.name}`),
+      paidNotice(agent.provider.name) ? c.yellow(`  ${paidNotice(agent.provider.name)}`) : "",
       c.dim(`  モード: ${agent.mode === "chat" ? "会話・ネット検索" : "コーディング"}`),
       c.dim(`  作業ルート: ${opts.root}`),
       c.dim(`  保存した記憶: ${saved.memories.length}件 / 感想: ${saved.feedback.length}件`),
@@ -249,6 +256,7 @@ async function main(): Promise<void> {
         agent.setProviders(next.provider, next.repairProvider);
         assistant.reset();
         stdout.write(c.green(`  頭脳を ${agent.provider.name} に差し替えました\n`));
+        if (paidNotice(agent.provider.name)) stdout.write(c.yellow(`  ${paidNotice(agent.provider.name)}\n`));
       } catch (e) {
         stdout.write(c.red(`  ${(e as Error).message}\n`));
       }

@@ -139,7 +139,7 @@ export type AgentOptions = {
   repairProvider?: Provider;
   tools: Tool[];
   ctx: ToolContext;
-  /** 1回の指示で頭脳に問い合わせる上限。暴走と課金事故の歯止め */
+  /** 1回の指示で頭脳に問い合わせる上限。暴走と課金事故の歯止め。省略時は頭脳ごとの値（なければ12） */
   maxSteps?: number;
   /** 会話履歴の上限（文字数）。超えたら古いものから落とす */
   contextBudget?: number;
@@ -153,7 +153,7 @@ export class Agent {
   messages: Message[] = [];
 
   private tools: Map<string, Tool>;
-  private maxSteps: number;
+  private maxStepsOverride: number | undefined;
   private contextBudgetOverride: number | undefined;
   private outline: string | null = null;
   private currentMode: AgentMode;
@@ -164,7 +164,7 @@ export class Agent {
     this.repairProvider = opts.repairProvider;
     this.ctx = opts.ctx;
     this.tools = new Map(opts.tools.map((t) => [t.name, t]));
-    this.maxSteps = opts.maxSteps ?? 12;
+    this.maxStepsOverride = opts.maxSteps;
     this.contextBudgetOverride = opts.contextBudget;
     this.currentMode = opts.mode ?? "code";
   }
@@ -245,6 +245,7 @@ export class Agent {
     const preserveTests = /(?:テスト(?:の)?ファイル|tests?|test files?).{0,20}(?:変更しない|書き換えない|編集しない|触らない)|(?:変更しない|書き換えない|編集しない).{0,20}(?:テスト(?:の)?ファイル|tests?|test files?)|do not (?:modify|edit|change) (?:the )?tests?/i.test(input);
     const failingTestRequest = repairRequested && !noTests && /(?:npm\s+test|テスト.{0,20}(?:失敗|落ち|通らない)|(?:失敗|落ち|通らない).{0,20}テスト|tests?.{0,20}fail|fail(?:ing|ed)?.{0,20}tests?)/i.test(input);
     const activeProvider = failingTestRequest ? this.repairProvider ?? this.provider : this.provider;
+    const maxSteps = this.maxStepsOverride ?? activeProvider.maxSteps ?? 12;
     if (activeProvider !== this.provider) {
       emit({ type: "notice", message: `失敗テストの修正に ${activeProvider.name} を使います。応答には数分かかることがあります。` });
     }
@@ -290,7 +291,7 @@ export class Agent {
     const loadedTestFiles = new Set<string>();
     const loadedSourceFiles = new Set<string>();
 
-    for (let step = 0; step < this.maxSteps; step++) {
+    for (let step = 0; step < maxSteps; step++) {
       this.trimContext(emit, activeProvider);
       const tools = revising ? [] : availableTools.filter((tool) => tool.name !== "edit_json" || jsonRelevant);
 
@@ -397,7 +398,7 @@ export class Agent {
       if (calls.length === 0) {
         if (repairRequested && failingTest) {
           this.messages.pop(); // テスト未通過の「完了」を履歴に残さない。
-          if (repairNudges < 2 && step < this.maxSteps - 1) {
+          if (repairNudges < 2 && step < maxSteps - 1) {
             repairNudges++;
             this.messages.push({ role: "tool", toolName: "test_check", content:
               "テストはまだ失敗しています。テストの入力と期待値を最初から追い、実装のどこで結果がずれるか調べてください。" +
@@ -423,7 +424,7 @@ export class Agent {
           const instructionEcho = /この参考資料から最初の質問に|追加検索は不要です|今回調べる対象:|確認する項目:|\[あなたが呼び出した [^\]]+ の出力\]|\[参考資料\]/.test(say);
           if (missing.length || companyClaims.length || urls.length || incomplete || instructionEcho) {
             this.messages.pop(); // 誤った回答を会話の事実として残さない。
-            if (revising || step === this.maxSteps - 1) { finishResearchFailure(); return; }
+            if (revising || step === maxSteps - 1) { finishResearchFailure(); return; }
             revising = true;
             emit({ type: "notice", message: "回答内容を資料と照らし合わせて見直しています。" });
             const correction: Message = { role: "tool", toolName: "answer_check", content: [

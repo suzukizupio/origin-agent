@@ -1,20 +1,27 @@
 import { createRuleProvider } from "./rule.ts";
 import { createOllamaProvider, DEFAULT_MODEL, installedModels } from "./ollama.ts";
 import { createOriginProvider } from "./origin.ts";
+import { createClaudeProvider, hasClaudeCredentials } from "./claude.ts";
 import type { Provider } from "../types.ts";
 
-export const providerNames = ["rule", "ollama", "origin"] as const;
+export const providerNames = ["rule", "ollama", "origin", "claude"] as const;
 export const REPAIR_MODEL = "qwen2.5-coder:7b";
 
 export type ProviderSelection = { provider: Provider; repairProvider?: Provider };
 
-export async function resolveProvider(name: string, model?: string): Promise<Provider> {
-  return (await resolveProviderSelection(name, model)).provider;
+export async function resolveProvider(name: string, model?: string, env: NodeJS.ProcessEnv = process.env): Promise<Provider> {
+  return (await resolveProviderSelection(name, model, env)).provider;
 }
 
-/** 自動選択時だけ、インストール済みの修正用モデルを併せて用意する。 */
-export async function resolveProviderSelection(name: string, model?: string): Promise<ProviderSelection> {
+/**
+ * 自動選択。Claude の認証情報が環境変数にあれば Claude を、なければローカルの Ollama を使う。
+ * ローカルを選んだときだけ、インストール済みの修正用モデルを併せて用意する。
+ */
+export async function resolveProviderSelection(name: string, model?: string, env: NodeJS.ProcessEnv = process.env): Promise<ProviderSelection> {
   if (name !== "auto") return { provider: createProvider(name, model) };
+  if (model?.startsWith("claude-") || (model === undefined && hasClaudeCredentials(env))) {
+    return { provider: createClaudeProvider(model === undefined ? {} : { model }) };
+  }
   if (model !== undefined) return { provider: createOllamaProvider({ model }) };
   try {
     const models = await installedModels();
@@ -42,6 +49,8 @@ export function createProvider(name: string, model?: string): Provider {
       return createOllamaProvider(model === undefined ? {} : { model });
     case "origin":
       return createOriginProvider(model === undefined ? {} : { variant: model });
+    case "claude":
+      return createClaudeProvider(model === undefined ? {} : { model });
     default:
       throw new Error(`未知のプロバイダ: ${name}（使えるのは ${providerNames.join(", ")}）`);
   }

@@ -1,6 +1,6 @@
 {
   "name": "origin-agent",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "description": "差し替え可能な頭脳を持つ、自作コーディングエージェント",
@@ -25,5 +25,8 @@
   "devDependencies": {
     "@types/node": "^22.15.3",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.134.0"
   }
 }
