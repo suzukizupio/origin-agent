@@ -127,13 +127,21 @@ export function parseToolCalls(text: string): { calls: ToolCall[]; say: string }
   return { calls, say: say.trim() };
 }
 
-/** ツール呼び出しを規約どおりのテキストに組み立てる（rule プロバイダなどが使う） */
-export function formatToolCall(name: string, args: Record<string, unknown>): string {
-  return `<tool name="${name}">\n${JSON.stringify(args)}\n</tool>`;
+/**
+ * ツール呼び出しを規約どおりのテキストに組み立てる（rule プロバイダなどが使う）。
+ * escapeMarkup は引数中の < を < と書く。書き込む内容に "</tool>" があってもブロックが途中で閉じない。
+ * 既定で変えないのは、学習教材のターゲットがこの関数の出力そのものだから。
+ */
+export function formatToolCall(name: string, args: Record<string, unknown>, options: { escapeMarkup?: boolean } = {}): string {
+  const json = JSON.stringify(args);
+  return `<tool name="${name}">\n${options.escapeMarkup ? json.replaceAll("<", "\\u003c") : json}\n</tool>`;
 }
 
-/** LLM に渡すシステムプロンプト。作業環境とツール一覧を規約つきで説明する */
-export function buildSystemPrompt(tools: Tool[], env?: AgentEnv): string {
+/**
+ * LLM に渡すシステムプロンプト。作業環境とツール一覧を規約つきで説明する。
+ * nativeTools は、ツールを API の機能として受け取る頭脳（Claude など）向け。
+ */
+export function buildSystemPrompt(tools: Tool[], env?: AgentEnv, options: { nativeTools?: boolean } = {}): string {
   if (env?.mode === "chat" && env.replyRewrite) return [
     "あなたは日本語のアシスタント origin です。直前のassistantの回答を、今回のユーザーの指定に合わせて言い換えてください。",
     "短さ・行数・箇条書きなど、今回指定された形式を優先します。前置きは不要です。",
@@ -173,6 +181,32 @@ export function buildSystemPrompt(tools: Tool[], env?: AgentEnv): string {
           "",
         ];
 
+  // 作業の規則。呼び出しの書式とは関係ないので、API のツール機能を使う頭脳にも渡す。
+  const toolRules = [
+    ...(isChat ? [] : [
+      "- **パスを推測しないこと。** 上の一覧に載っていないファイルを触る前に、",
+      "  必ず search か list_files で実在を確かめる。",
+      "- ファイルを編集するときは、必ず先に read_file で現在の内容を確認すること。",
+      "- edit_file の old_string は正規表現ではない。ファイル内の文字列をそのまま引用する。",
+      "  read_file が行頭に付けた行番号とタブは含めないこと。",
+      // ここに「追加のしかた」の規則を2〜4行足したところ、preserve-rest が 3/3 から 0/3 に落ちた。
+      // 3B では規則を増やすほど「必ず先に read_file」の守りが緩み、
+      // ファイルを読まずに形式を推測して撃つようになる。増やさないこと自体が設計判断。
+      // 追加時の注意は edit_file の new_string の説明（ツール一覧側）に1文だけ置いてある。
+      "- old_string は一意になる最小の文字列でよい。数値だけの変更なら、その数値が一意か確認して置換できる。",
+      "  引用符を含む範囲を選んだ場合は、引用符も省略せず、JSON文字列としてエスケープすること。",
+    ]),
+    "- 同じツールを同じ引数で繰り返さないこと。失敗したら引数か手段を変える。",
+    "- ツールの実行を拒否されたら、別の手段で同じ操作を実行せず、その判断を尊重すること。",
+  ];
+  // API のツール機能を持つ頭脳には、ツールの一覧と定義を API 側で渡す。書式の説明と見本は渡さない。
+  const nativeToolSection = tools.length === 0 ? [] : [
+    "## ツールを使うときの規則",
+    "- 互いに依存しない読み取りや検索は、まとめて呼び出して構いません。",
+    ...toolRules,
+    "- 十分な情報が集まったら、ツールを使わずに日本語で最終的な回答を書いてください。",
+  ];
+
   return [
     "あなたの名前は origin です。ユーザーと一緒に少しずつできることを増やす、日本語のアシスタントです。",
     `今日の日付: ${new Date().toLocaleDateString("sv-SE")}`,
@@ -211,36 +245,24 @@ export function buildSystemPrompt(tools: Tool[], env?: AgentEnv): string {
     ] : []),
     "",
     ...environment,
-    "## 使えるツール",
-    catalog,
-    "",
-    "## ツールの呼び出し方",
-    "呼び出すときは、次の形式のブロックをそのまま出力してください。",
-    "",
-    isChat ? '<tool name="web_search">' : '<tool name="read_file">',
-    isChat ? '{"query": "TypeScript 公式"}' : '{"path": "src/cli.ts"}',
-    "</tool>",
-    "",
-    "規則:",
-    "- ブロックの中身は JSON オブジェクトひとつだけ。説明文を混ぜないこと。",
-    "- 一度に出すツールブロックは1つだけ。結果を見てから次を決めること。",
-    "- ツールの結果は次のターンで渡されます。結果を勝手に想像して書かないこと。",
-    ...(isChat ? [] : [
-      "- **パスを推測しないこと。** 上の一覧に載っていないファイルを触る前に、",
-      "  必ず search か list_files で実在を確かめる。",
-      "- ファイルを編集するときは、必ず先に read_file で現在の内容を確認すること。",
-      "- edit_file の old_string は正規表現ではない。ファイル内の文字列をそのまま引用する。",
-      "  read_file が行頭に付けた行番号とタブは含めないこと。",
-      // ここに「追加のしかた」の規則を2〜4行足したところ、preserve-rest が 3/3 から 0/3 に落ちた。
-      // 3B では規則を増やすほど「必ず先に read_file」の守りが緩み、
-      // ファイルを読まずに形式を推測して撃つようになる。増やさないこと自体が設計判断。
-      // 追加時の注意は edit_file の new_string の説明（ツール一覧側）に1文だけ置いてある。
-      "- old_string は一意になる最小の文字列でよい。数値だけの変更なら、その数値が一意か確認して置換できる。",
-      "  引用符を含む範囲を選んだ場合は、引用符も省略せず、JSON文字列としてエスケープすること。",
+    ...(options.nativeTools ? nativeToolSection : [
+      "## 使えるツール",
+      catalog,
+      "",
+      "## ツールの呼び出し方",
+      "呼び出すときは、次の形式のブロックをそのまま出力してください。",
+      "",
+      isChat ? '<tool name="web_search">' : '<tool name="read_file">',
+      isChat ? '{"query": "TypeScript 公式"}' : '{"path": "src/cli.ts"}',
+      "</tool>",
+      "",
+      "規則:",
+      "- ブロックの中身は JSON オブジェクトひとつだけ。説明文を混ぜないこと。",
+      "- 一度に出すツールブロックは1つだけ。結果を見てから次を決めること。",
+      "- ツールの結果は次のターンで渡されます。結果を勝手に想像して書かないこと。",
+      ...toolRules,
+      "- 十分な情報が集まったら、ツールブロックを出さずに日本語で最終的な回答を書いてください。",
     ]),
-    "- 同じツールを同じ引数で繰り返さないこと。失敗したら引数か手段を変える。",
-    "- ツールの実行を拒否されたら、別の手段で同じ操作を実行せず、その判断を尊重すること。",
-    "- 十分な情報が集まったら、ツールブロックを出さずに日本語で最終的な回答を書いてください。",
     ...(env?.knowledge ? [
       "",
       "## 今回の回答で参考にする、ユーザーが保存した希望",

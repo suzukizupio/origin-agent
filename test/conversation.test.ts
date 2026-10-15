@@ -65,18 +65,18 @@ test("/search: 検索を先に実行し、結果をモデルへ渡して回答�
 
 test("auto: インストール済みのモデルを選び、接続できないときだけ定型応答になる", async (t) => {
   const mock = t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ models: [{ name: "local-chat:small" }] })));
-  assert.equal((await resolveProvider("auto")).name, "ollama:local-chat:small");
+  assert.equal((await resolveProvider("auto", undefined, {})).name, "ollama:local-chat:small");
   mock.mock.mockImplementation(async () => { throw new Error("offline"); });
-  assert.equal((await resolveProvider("auto")).name, "rule");
+  assert.equal((await resolveProvider("auto", undefined, {})).name, "rule");
   // 明示したモデルを、黙って rule にすり替えない。
-  assert.equal((await resolveProvider("auto", "chosen:1b")).name, "ollama:chosen:1b");
+  assert.equal((await resolveProvider("auto", "chosen:1b", {})).name, "ollama:chosen:1b");
 });
 
 test("auto: 7B があれば修正用に用意し、明示したモデルは変更しない", async (t) => {
   const mock = t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ models: [
     { name: "qwen2.5-coder:3b" }, { name: "qwen2.5-coder:7b" },
   ] })));
-  const automatic = await resolveProviderSelection("auto");
+  const automatic = await resolveProviderSelection("auto", undefined, {});
   assert.equal(automatic.provider.name, "ollama:qwen2.5-coder:3b");
   assert.equal(automatic.repairProvider?.name, "ollama:qwen2.5-coder:7b");
   assert.equal(mock.mock.callCount(), 1);
@@ -87,7 +87,7 @@ test("auto: 7B があれば修正用に用意し、明示したモデルは変�
   assert.equal(mock.mock.callCount(), 1);
 
   mock.mock.mockImplementation(async () => new Response(JSON.stringify({ models: [{ name: "qwen2.5-coder:3b" }] })));
-  assert.equal((await resolveProviderSelection("auto")).repairProvider, undefined);
+  assert.equal((await resolveProviderSelection("auto", undefined, {})).repairProvider, undefined);
 });
 
 test("context: 資料が増えても直近の依頼と最後のツール結果を残す", async () => {
