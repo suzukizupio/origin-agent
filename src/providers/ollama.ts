@@ -71,15 +71,24 @@ export async function installedModels(): Promise<string[]> {
   return (data.models ?? []).flatMap((model) => typeof model.name === "string" ? [model.name] : []);
 }
 
+/** モデル名に書かれた大きさ（10億パラメーター単位）。"qwen2.5-coder:14b" なら 14。書かれていなければ undefined。 */
+export function modelSizeB(model: string): number | undefined {
+  const match = /:(\d+(?:\.\d+)?)b(?![a-z0-9])/i.exec(model);
+  return match ? Number(match[1]) : undefined;
+}
+
 /**
  * 1回の応答を待つ上限。7B 以上を GPU なしで動かすと、長いシステムプロンプトの読み込みだけで
  * 2 分近くかかることがある。固定値だと、モデルの能力ではなく待ち時間の上限で失敗してしまい、
  * 採点で「大きいモデルほど悪い」という誤った結論になる。
+ * GPU なしでは待ち時間がおおむねモデルの大きさに比例するので、3B で決めた上限を大きさに合わせて延ばす。
+ * 3B 以下は従来どおり 120 秒（資料から答える段階は 60 秒）、7B は 280 秒、14B は 560 秒。
  */
-function requestTimeoutMs(explicit: number | undefined, answerOnly: boolean): number {
-  if (explicit !== undefined) return explicit;
+export function ollamaTimeoutMs(model: string, answerOnly = false): number {
   const fromEnv = Number(process.env.ORIGIN_OLLAMA_TIMEOUT_MS);
-  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : answerOnly ? 60_000 : 120_000;
+  if (Number.isFinite(fromEnv) && fromEnv > 0) return fromEnv;
+  const base = answerOnly ? 60_000 : 120_000;
+  return Math.round(base * Math.max(1, (modelSizeB(model) ?? 3) / 3));
 }
 
 export function createOllamaProvider(
@@ -99,7 +108,7 @@ export function createOllamaProvider(
     contextBudget: numCtx * 2 - 4_000,
     async complete(messages: Message[], tools: Tool[], env: AgentEnv, callbacks: CompletionOptions = {}) {
       const started = performance.now();
-      const timeoutMs = requestTimeoutMs(opts.timeoutMs, env.researchAnswerOnly === true);
+      const timeoutMs = opts.timeoutMs ?? ollamaTimeoutMs(model, env.researchAnswerOnly === true);
       const signal = AbortSignal.timeout(timeoutMs);
       const timeoutError = () => new ProviderTimeoutError(
         `Ollama の応答が ${Math.round(timeoutMs / 1000)} 秒以内に返りませんでした (${model})。` +

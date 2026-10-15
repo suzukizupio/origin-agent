@@ -286,7 +286,7 @@ settings.json に "language": "ja" を追加してください。既存の設定
 
 普通の会話は、生成された文字から順に表示します。調べものは数値・出典の検査後に文章を表示します。比較の条件確認と、資料から明確に読み取れる数値の大小計算は、モデルを呼ばずに処理します。
 モデルから文字が届かない間は30秒ごとに使用モデルと経過時間を表示します。待ち時間の上限に達したときは、未完了であることと再試行方法を回答として表示します。
-資料から回答する段階では生成量を抑え、既定の待ち時間を60秒にしました。時間切れでも、取得済み資料に質問と関連する文があれば、要約に代えてその文を出典付きで引用します。資料が取得できていない場合は回答を作りません。`ORIGIN_OLLAMA_TIMEOUT_MS` で待ち時間を明示した場合はその値を優先します。
+資料から回答する段階では生成量を抑え、既定の待ち時間を通常の半分（3B では60秒）にしました。時間切れでも、取得済み資料に質問と関連する文があれば、要約に代えてその文を出典付きで引用します。資料が取得できていない場合は回答を作りません。`ORIGIN_OLLAMA_TIMEOUT_MS` で待ち時間を明示した場合はその値を優先します。
 更新前から起動している端末には変更が反映されません。`Ctrl+C` で停止し、`C:\Users\6512\development\origin-agent` で `npm start` を実行してください。
 これは待ち時間の見え方を改善する機能です。モデルが考えたり文章を作ったりする計算自体は引き続き必要です。
 ツール構文やコードの開始が見えた場合は、その先を完成まで待ってから表示します。最終回答を二重表示せず、通信が途中で切れた未完了の回答は会話履歴へ追加しません。
@@ -315,6 +315,39 @@ npm run bench:response -- --buffered --repeat 2 --out buffered.json
 
 この計測は3つの短い質問を各2回、独立した会話としてモデルへ送ります。最初の表示、回答完了、出力全文、モデルの処理時間を保存します。
 ネット検索や個人の記憶は使いません。最初の実行は読み込みや入力キャッシュの影響を受けるため、結果の平均だけでなく各回答も確認してください。
+
+## もっと大きいローカルモデルを試す
+
+お金をかけずに賢くするには、大きいローカルモデルに替えます。賢くなる見込みはありますが、GPU のない PC では遅くなります。CPU のみ・メモリ約15GB のこの PC で現実的なのは、今と同じ系統の `qwen2.5-coder:14b`（約9GB）です。`gpt-oss:20b`（約14GB）はメモリがほぼ埋まるため、今回は対象にしていません。
+
+既定の待ち時間は、モデル名に書かれた大きさに合わせて延びます。3B 以下は120秒、7B は280秒、14B は560秒です。`ORIGIN_OLLAMA_TIMEOUT_MS` を指定した場合はその値を優先します。
+
+1. 取得する（約9GB、初回だけ）。
+
+   ```powershell
+   ollama pull qwen2.5-coder:14b
+   ```
+
+2. まず速さを見る。短い質問3つを1回ずつ送り、1回の応答にかかる時間を確かめます。
+
+   ```powershell
+   npm run bench:response -- --model qwen2.5-coder:14b --repeat 1 --out bench-14b.json
+   ```
+
+3. 7B と同じ課題・条件で採点して比べる。エージェントの処理は以前の採点から変わっているので、7B も今のコードで測り直します。1課題につき数回〜十数回の応答があるため、時間がかかります。手順2の時間から見積もってください。
+
+   ```powershell
+   npm run eval -- --provider ollama --model qwen2.5-coder:7b --only fix-failing-test,fix-described-bug,add-function --offline --repeat 1 --timeout 900 --out results/compare-7b.json
+   npm run eval -- --provider ollama --model qwen2.5-coder:14b --only fix-failing-test,fix-described-bug,add-function --offline --repeat 1 --timeout 900 --compare results/compare-7b.json --out results/compare-14b.json
+   ```
+
+   1回ずつだと偶然の差が出ます。差が見えたら `--repeat 3` で確かめます。最後に、`--only` を外して `--holdout` を付け、改善に使っていない同種の3課題でも確認します。
+
+4. 良ければ普段も使う。
+
+   ```powershell
+   npm start -- --model qwen2.5-coder:14b --mode code --root C:\path\to\project
+   ```
 
 ## 成長を確かめる
 

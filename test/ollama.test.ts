@@ -2,7 +2,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createOllamaProvider } from "../src/providers/ollama.ts";
+import { createOllamaProvider, modelSizeB, ollamaTimeoutMs } from "../src/providers/ollama.ts";
 import type { CompletionStats } from "../src/types.ts";
 
 function failingFetch(name: string): typeof fetch {
@@ -46,6 +46,22 @@ test("ollama: 本当に接続できないときは、従来どおり起動方法
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test("ollama: 既定の待ち時間はモデルの大きさに合わせて延び、3B 以下は従来どおり", async (t) => {
+  const previous = process.env.ORIGIN_OLLAMA_TIMEOUT_MS;
+  delete process.env.ORIGIN_OLLAMA_TIMEOUT_MS;
+  t.after(() => { if (previous !== undefined) process.env.ORIGIN_OLLAMA_TIMEOUT_MS = previous; });
+  assert.deepEqual(["qwen2.5-coder:14b", "qwen2.5-coder:14b-instruct-q4_K_M", "gpt-oss:20b", "qwen2.5-coder:1.5b", "mistral:latest", "test-model"].map(modelSizeB),
+    [14, 14, 20, 1.5, undefined, undefined]);
+  assert.deepEqual(["qwen2.5-coder:3b", "qwen2.5-coder:1.5b", "test-model", "qwen2.5-coder:7b", "qwen2.5-coder:14b"].map((model) => ollamaTimeoutMs(model)),
+    [120_000, 120_000, 120_000, 280_000, 560_000]);
+  assert.equal(ollamaTimeoutMs("qwen2.5-coder:14b", true), 280_000);
+
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  globalThis.fetch = failingFetch("TimeoutError");
+  await assert.rejects(() => completeOnce(createOllamaProvider({ model: "qwen2.5-coder:14b" })), /560 秒以内に返りませんでした/);
 });
 
 test("ollama: 待ち時間の上限は環境変数で上書きできる", async () => {

@@ -23,6 +23,7 @@ import { Assistant } from "../src/assistant.ts";
 import { LearningStore } from "../src/learning.ts";
 import { allTools } from "../src/tools/index.ts";
 import { resolveProvider } from "../src/providers/index.ts";
+import { ollamaTimeoutMs } from "../src/providers/ollama.ts";
 import { tasks as allTasks } from "./eval-tasks.ts";
 import type { Task, TaskResult } from "./eval-tasks.ts";
 import type { AgentEvent, Provider } from "../src/types.ts";
@@ -385,7 +386,6 @@ async function main(): Promise<void> {
     process.env.ORIGIN_OLLAMA_TIMEOUT_MS = String(Math.round(opts.timeoutSec * 1000));
     process.env.ORIGIN_MODEL_TIMEOUT_MS = String(Math.round(opts.timeoutSec * 1000));
   }
-  const timeoutSec = Number((opts.provider === "origin" ? process.env.ORIGIN_MODEL_TIMEOUT_MS : process.env.ORIGIN_OLLAMA_TIMEOUT_MS) ?? 120_000) / 1000;
   const selected = allTasks.filter((task) => {
     if (opts.suite === "daily" && task.suite !== "daily") return false;
     if (opts.only.length > 0) {
@@ -403,6 +403,10 @@ async function main(): Promise<void> {
   if (provider.name === "rule") {
     throw new Error("採点には言語モデルが要ります。ollama を起動してから実行してください。");
   }
+  // Ollama の既定の上限はモデルの大きさで変わる。表示・記録するのは実際に使う値。
+  const timeoutSec = (provider.name.startsWith("ollama:")
+    ? ollamaTimeoutMs(provider.name.slice("ollama:".length))
+    : Number(process.env.ORIGIN_MODEL_TIMEOUT_MS ?? 120_000)) / 1000;
 
   const previous = opts.compare === undefined
     ? undefined
